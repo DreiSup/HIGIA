@@ -1,0 +1,63 @@
+# Higía — infraestructura local
+#
+#   docker compose up -d      levantar
+#   docker compose down       parar (conserva los datos)
+#   docker compose logs -f db seguir el arranque
+#
+# ⚠️ Los datos NO viven aquí dentro. `postgres_data/`, `datos/` y `.env` están en el
+#    directorio padre, FUERA del repositorio git, para que sea imposible publicarlos.
+#
+# ⚠️ Puerto 5433, no 5432: el 5432 lo ocupa el Postgres de andrei-leads-scraper.
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: higia-db
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_DB: higia
+      POSTGRES_USER: higia
+      # Los datos del Takeout traen las pulsaciones en UTC y el sueño en hora local
+      # sin zona. Sin esto, los cruces temporales salen desplazados y no avisan.
+      TZ: Europe/Madrid
+      PGTZ: Europe/Madrid
+    ports:
+      # Solo localhost: la base no queda expuesta a la red.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ../postgres_data:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U higia -d higia"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    shm_size: 256mb
+
+  backend:
+    build: ./backend
+    container_name: higia-backend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      # ⚠️ NO montar aqui la URL con ${POSTGRES_PASSWORD}: compose interpola las
+      #    variables leyendo un `.env` de ESTE directorio, y el nuestro vive en el
+      #    padre (fuera del repo). Llegaria vacia. El backend arma la URL por su
+      #    cuenta con lo que `env_file` le inyecta.
+      POSTGRES_USER: higia
+      POSTGRES_DB: higia
+      POSTGRES_HOST: db
+      TZ: Europe/Madrid
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Recarga en caliente durante el desarrollo.
+      - ./backend:/code
+      # Solo lectura: el backend lee los exports pero nunca los modifica.
+      - ../datos:/datos:ro
+    depends_on:
+      db:
+        condition: service_healthy
