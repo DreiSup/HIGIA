@@ -1,0 +1,43 @@
+# ============================================================
+#  Higía — .gitignore
+#  ⚠️ Repositorio PÚBLICO con un proyecto de datos de salud.
+#  Los datos reales viven FUERA de esta carpeta (../postgres_data,
+#  ../datos, ../.env), así que no pueden llegar aquí ni por error.
+#  Esto es la segunda barrera, no la primera.
+# ============================================================
+
+# Secretos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Datos de salud — nunca, bajo ningún concepto
+postgres_data/
+datos/
+*.csv
+*.zip
+takeout*/
+exports/
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Entornos y sistema
+.vscode/
+.idea/
+.DS_Store
+*.log
+logs/
