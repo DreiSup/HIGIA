@@ -1,0 +1,149 @@
+/* Higía — estilos. Sin librerías: una sola pantalla y un solo usuario. */
+
+:root {
+  --fondo: #0f1115;
+  --panel: #171a21;
+  --panel-borde: #262b36;
+  --texto: #e6e8ec;
+  --texto-suave: #8b93a1;
+  /* El hueco tiene su propio color, y es apagado a propósito: un día sin
+     registrar tiene que LEERSE como vacío, no como un día con ceros. */
+  --hueco: #1b1e25;
+  --hoy: #4c8dff;
+  --sub: #f2b13c;   /* subjetivo  */
+  --com: #4fb573;   /* comidas    */
+  --con: #c07cf0;   /* consumos   */
+  --pul: #48b0c8;   /* pulsera    */
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fondo: #f7f8fa;
+    --panel: #ffffff;
+    --panel-borde: #e3e6ec;
+    --texto: #1b1e25;
+    --texto-suave: #6b7280;
+    --hueco: #f0f1f4;
+    --hoy: #1d64d8;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem 4rem;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main { max-width: 60rem; margin: 0 auto; }
+
+/* ── Cabecera ─────────────────────────────────────────────────────────── */
+
+.cabecera {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+
+.cabecera h1 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.cabecera .crece { flex: 1; }
+
+button {
+  font: inherit;
+  color: var(--texto);
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+  border-radius: .5rem;
+  padding: .3rem .7rem;
+  cursor: pointer;
+}
+button:hover { border-color: var(--texto-suave); }
+button:disabled { opacity: .4; cursor: default; }
+
+/* ── Rejilla ──────────────────────────────────────────────────────────── */
+
+.semana-cabecera, .rejilla {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: .4rem;
+}
+
+.semana-cabecera {
+  margin-bottom: .4rem;
+  color: var(--texto-suave);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  text-align: center;
+}
+
+.celda {
+  min-height: 5.5rem;
+  padding: .4rem .5rem;
+  border: 1px solid var(--panel-borde);
+  border-radius: .6rem;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+/* Día sin nada registrado. No lleva contenido: lleva vacío. */
+.celda.vacia { background: var(--hueco); border-color: transparent; }
+
+/* Relleno para cuadrar la primera y la última semana. Ni celda ni hueco. */
+.celda.fuera { background: none; border-color: transparent; }
+
+.celda.hoy { border-color: var(--hoy); }
+
+.numero {
+  font-variant-numeric: tabular-nums;
+  font-size: .85rem;
+  color: var(--texto-suave);
+}
+.celda.hoy .numero { color: var(--hoy); font-weight: 600; }
+
+.dato {
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+}
+.dato .etiqueta { color: var(--texto-suave); }
+
+.puntos { margin-top: auto; display: flex; gap: .25rem; }
+.punto { width: .5rem; height: .5rem; border-radius: 50%; }
+.punto.sub { background: var(--sub); }
+.punto.com { background: var(--com); }
+.punto.con { background: var(--con); }
+.punto.pul { background: var(--pul); }
+
+/* ── Leyenda y avisos ─────────────────────────────────────────────────── */
+
+.leyenda {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: var(--texto-suave);
+  font-size: .82rem;
+}
+.leyenda span { display: flex; align-items: center; gap: .35rem; }
+
+.aviso {
+  padding: .8rem 1rem;
+  border-radius: .6rem;
+  border: 1px solid var(--panel-borde);
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+.aviso.error { border-color: #b4453a; color: #ff8f83; }
+.aviso code { color: var(--texto); }

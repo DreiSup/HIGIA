@@ -1,0 +1,22 @@
+{
+  "name": "higia-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Higía — calendario de registro. Habla con la API del backend.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "tipos": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "typescript": "^7.0.2"
+  }
+}

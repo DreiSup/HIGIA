@@ -65,3 +65,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: higia-frontend
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Madrid
+    ports:
+      # Solo localhost, igual que el resto. El 3000 estaba libre.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Recarga en caliente durante el desarrollo.
+      - ./frontend:/app
+      # ⚠️ Volumen anónimo encima de node_modules: sin él, el montaje de arriba
+      #    tapa las dependencias instaladas en la imagen y `next` no existe.
+      - /app/node_modules
+    depends_on:
+      - backend
