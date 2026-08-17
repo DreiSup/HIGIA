@@ -58,6 +58,10 @@ services:
       - ./backend:/code
       # Solo lectura: el backend lee los exports pero nunca los modifica.
       - ../datos:/datos:ro
+      # Los cargadores se ejecutan aqui dentro: es donde ya hay psycopg y donde
+      # `db` resuelve. En el host no hay psycopg instalado.
+      #   docker compose exec backend python /scripts/cargar_takeout.py /datos/...
+      - ./scripts:/scripts:ro
     depends_on:
       db:
         condition: service_healthy
