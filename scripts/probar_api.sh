@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Batería de humo de la API de Higía. 21 comprobaciones.
+# Batería de humo de la API de Higía. 25 comprobaciones.
 #
 #   ./scripts/probar_api.sh
 #
@@ -43,6 +43,19 @@ t "/salud/sueno"               200 "$A/salud/sueno"
 t "/salud/metricas"            200 "$A/salud/metricas"
 t "/salud/serie/{metrica}"     200 "$A/salud/serie/pulsaciones?desde=2026-08-08&hasta=2026-08-13"
 t "/dia-subjetivo/pendientes"  200 "$A/dia-subjetivo/pendientes"
+t "/calendario mes con datos"  200 "$A/calendario/2026/8"
+t "/calendario mes vacío"      200 "$A/calendario/2019/3"
+t "/calendario mes 13 → 422"   422 "$A/calendario/2026/13"
+
+# La rejilla tiene que traer TODOS los días del mes, no solo los que existen en
+# la base: si un mes de 31 días devuelve 6, el calendario pinta un mes agujereado.
+dias_agosto=$(curl -s "$A/calendario/2026/8" | grep -o '"fecha"' | wc -l)
+dias_febrero=$(curl -s "$A/calendario/2024/2" | grep -o '"fecha"' | wc -l)
+if [ "$dias_agosto" = "31" ] && [ "$dias_febrero" = "29" ]; then
+  echo "  ✅ /calendario devuelve el mes entero (31 y 29, bisiesto incluido)"; ok=$((ok+1))
+else
+  echo "  🔴 /calendario devuelve $dias_agosto y $dias_febrero días, esperaba 31 y 29"; mal=$((mal+1))
+fi
 
 echo "── ESCRITURA ──"
 t "PUT /dia-subjetivo" 200 -X PUT "$A/dia-subjetivo" -H 'Content-Type: application/json' \

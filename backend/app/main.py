@@ -16,7 +16,7 @@ Tres bloques, uno por pantalla de la app:
 """
 from datetime import date, timedelta
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import bd
@@ -102,6 +102,44 @@ def dias(desde: date | None = None, hasta: date | None = None,
             " ORDER BY fecha", (desde, hasta))
     return list(reversed(bd.consultar(
         "SELECT * FROM v_dia_completo ORDER BY fecha DESC LIMIT %s", (limite,))))
+
+
+@app.get("/calendario/{anio}/{mes}", tags=["home"])
+def calendario(anio: int = Path(ge=2000, le=2100),
+               mes: int = Path(ge=1, le=12)) -> list[dict]:
+    """La rejilla de un mes: TODOS los días, tengan dato o no.
+
+    🔑 `/dias` solo devuelve los días que existen en la base. Un calendario
+    necesita además las celdas vacías, y quien las ponga decide qué significan:
+    si las rellenara el frontend, ahí es exactamente por donde se cuela un 0
+    donde no hubo dato. Un día sin registrar vuelve con todo a `null` y las
+    cuatro banderas a `false` — es un hueco, y se pinta como hueco.
+
+    Las banderas son para pintar la celda de un vistazo, no para calcular nada.
+    """
+    desde = date(anio, mes, 1)
+    # Día 28 + 4 días cae siempre en el mes siguiente, con bisiestos o sin ellos.
+    hasta = (desde.replace(day=28) + timedelta(days=4)).replace(day=1) \
+        - timedelta(days=1)
+    filas = bd.consultar(
+        "WITH rejilla AS ("
+        "  SELECT generate_series(%s::date, %s::date, '1 day')::date AS fecha)"
+        " SELECT r.fecha,"
+        "        to_jsonb(v) - 'fecha' AS datos,"
+        "        (v.como_me_siento IS NOT NULL OR v.animo IS NOT NULL"
+        "         OR v.energia IS NOT NULL OR v.nota_dia IS NOT NULL)"
+        "          AS tiene_subjetivo,"
+        "        coalesce(v.comidas, 0) > 0 AS tiene_comidas,"
+        "        EXISTS (SELECT 1 FROM consumos c WHERE c.fecha = r.fecha)"
+        "          AS tiene_consumos,"
+        "        (v.minutos_dormido IS NOT NULL OR v.pasos IS NOT NULL"
+        "         OR v.pulsaciones_media IS NOT NULL) AS tiene_pulsera"
+        " FROM rejilla r"
+        " LEFT JOIN v_dia_completo v ON v.fecha = r.fecha"
+        " ORDER BY r.fecha", (desde, hasta))
+    # Se aplana para que cada día tenga la misma forma que devuelve `/dia`.
+    return [{"fecha": f.pop("fecha"), **(f.pop("datos") or {}), **f}
+            for f in filas]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
