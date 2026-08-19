@@ -90,9 +90,96 @@ body {
 
 @keyframes latido { 0%, 100% { opacity: .5; } 50% { opacity: .9; } }
 
-/* ── Estructura ───────────────────────────────────────────────────────── */
+/* ── Marco: barra lateral ↔ barra de pestañas ─────────────────────────────
+ *
+ * Un solo árbol para las dos formas. Lo que cambia es el contenedor, no el
+ * contenido: en escritorio la navegación va a la izquierda, en móvil abajo.
+ * El punto de corte son 900 px, que es donde la barra lateral empieza a
+ * comerse el ancho útil de la rejilla de siete columnas. */
 
-.pagina { min-height: 100vh; padding: 40px 28px 56px; }
+.marco { display: flex; min-height: 100vh; }
+
+.barra-lateral {
+  width: 232px;
+  flex: none;
+  border-right: 1px solid var(--linea-suave);
+  background: var(--fondo-2);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 24px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.marca-lateral {
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.pestanas { display: flex; flex-direction: column; gap: 3px; }
+
+.pestana {
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--texto-2);
+  text-decoration: none;
+  transition: background .14s, color .14s;
+}
+.pestana:hover { color: var(--texto); background: var(--superficie-2); }
+.pestana.activa {
+  font-weight: 600;
+  color: var(--texto);
+  background: var(--superficie);
+}
+
+/* El botón de tema se va al fondo de la barra: se usa una vez, no cada día. */
+.tema-lateral { margin-top: auto; }
+
+.contenido { flex: 1; min-width: 0; }
+
+/* La barra de pestañas solo existe en móvil. */
+.barra-pestanas { display: none; }
+
+@media (max-width: 900px) {
+  .barra-lateral { display: none; }
+  .barra-pestanas {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    gap: 4px;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--linea);
+    background: var(--fondo-2);
+  }
+  .pestana-movil {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--texto-3);
+    text-decoration: none;
+  }
+  .pestana-movil.activa {
+    font-weight: 600;
+    color: var(--texto);
+    background: var(--superficie);
+  }
+}
+
+/* ── Estructura de página ─────────────────────────────────────────────── */
+
+.pagina { padding: 40px 28px 56px; }
 
 .columna {
   max-width: 1060px;
@@ -100,6 +187,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 26px;
+}
+
+@media (max-width: 900px) {
+  /* Hueco para que la barra de pestañas no tape el final del contenido. */
+  .pagina { padding: 24px 16px calc(96px + env(safe-area-inset-bottom)); }
 }
 
 .tira {
@@ -474,3 +566,890 @@ button {
 
 .leyenda-hueco .leyenda-marca { color: var(--texto-3); }
 .leyenda-hueco span:last-child { color: var(--texto-3); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  PIEZAS COMPARTIDAS POR HOY, SUEÑO, CORAZÓN Y EL PANEL DEL DÍA
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.cabecera-vista {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--linea-suave);
+}
+
+.cabecera-vista h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+  font-weight: 600;
+}
+
+.ruta {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--texto-3);
+  line-height: 1.5;
+}
+
+.tarjeta {
+  border: 1px solid var(--linea);
+  border-radius: 18px;
+  background: var(--superficie);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tarjeta-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Rótulo en versalitas con su punto de color. El punto dice de qué tipo de
+   registro habla el bloque, con los mismos cuatro colores de siempre. */
+.rotulo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--texto-2);
+}
+
+.rotulo-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: block;
+  flex: none;
+}
+
+.nota-menor { font-size: 12px; color: var(--texto-2); }
+.nota-fina { font-size: 11.5px; color: var(--texto-3); line-height: 1.5; }
+
+/* El número protagonista de un bloque. Solo puede haber uno por tarjeta: si
+   hay cuatro del mismo tamaño, no hay jerarquía que leer. */
+.cifra-grande {
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -.035em;
+  line-height: 1;
+}
+.cifra-grande.hueca { font-size: 22px; color: var(--texto-3); }
+
+/* ── Rejilla de cifras pequeñas ───────────────────────────────────────── */
+
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.cifra {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px solid var(--linea);
+  background: var(--fondo-2);
+}
+/* 🔑 Sin dato = borde discontinuo y sin fondo. Se ve desde lejos que ahí no
+   hay medición, sin tener que leer el valor. */
+.cifra.sin-dato { border-style: dashed; background: transparent; }
+
+.cifra-etiqueta {
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--texto-3);
+}
+
+.cifra-valor {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--texto);
+}
+.cifra.sin-dato .cifra-valor { font-size: 14px; font-weight: 400; color: var(--texto-3); }
+
+/* El denominador de una media. Va SIEMPRE, y va debajo del número, no en una
+   nota al pie: una media de 2 noches y una de 7 no pueden parecer lo mismo. */
+.denominador { font-size: 11.5px; color: var(--texto-2); }
+.cifra.sin-dato .denominador { color: var(--texto-3); }
+
+/* ── Avisos y huecos ──────────────────────────────────────────────────── */
+
+.aviso {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--texto-2);
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--linea-suave);
+  background: var(--fondo-2);
+  text-wrap: pretty;
+}
+
+.vacio {
+  border: 1px dashed var(--linea);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.vacio-titulo { font-size: 15px; font-weight: 600; color: var(--texto-2); }
+.vacio-texto {
+  font-size: 12.5px;
+  color: var(--texto-3);
+  line-height: 1.55;
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+
+.esqueleto {
+  border-radius: 18px;
+  background: var(--superficie-2);
+  border: 1px solid var(--linea);
+  animation: latido 1.5s ease-in-out infinite;
+}
+
+.pila { display: flex; flex-direction: column; gap: 14px; }
+.par {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 900px) { .par { grid-template-columns: 1fr; } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  HOY
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.senales-hoy {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.senal-caja {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px dashed var(--linea);
+  background: transparent;
+}
+.senal-caja.presente {
+  border-style: solid;
+  background: var(--fondo-2);
+}
+
+.senal-caja-cabecera { display: flex; align-items: center; gap: 8px; }
+
+/* La letra en cuadradito: hueca si falta el registro, rellena si está. */
+.senal-letra {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid currentColor;
+}
+.senal-caja.presente .senal-letra {
+  color: var(--fondo);
+  background: currentColor;
+}
+.senal-caja.presente .senal-letra span { color: var(--fondo); }
+
+.senal-nombre { font-size: 12.5px; font-weight: 600; color: var(--texto-2); }
+.senal-caja.presente .senal-nombre { color: var(--texto); }
+
+.senal-estado {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--texto-3);
+}
+.senal-caja.presente .senal-estado { color: var(--texto); }
+
+.boton-accion {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primario);
+  color: var(--primario-texto);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.boton-accion:hover { filter: brightness(1.08); color: var(--primario-texto); }
+
+.fila-accion { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+/* Barra de una escala 0-10 en modo lectura. */
+.escala-lectura { display: flex; flex-direction: column; gap: 7px; }
+.escala-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--texto-2);
+}
+.escala-valor { font-size: 14px; font-weight: 600; color: var(--texto); }
+.escala-valor.hueca { font-size: 12px; font-weight: 400; color: var(--texto-3); }
+
+.escala-barra {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--linea-suave);
+  overflow: hidden;
+}
+/* Sin valor no hay barra a 0: hay un carril discontinuo vacío. */
+.escala-barra.hueca {
+  background: transparent;
+  border: 1px dashed var(--linea);
+}
+.escala-relleno {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--c-subjetivo);
+}
+
+/* Las siete noches de la semana. */
+.barras-semana {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 92px;
+}
+.barra-noche {
+  border-radius: 8px;
+  background: var(--c-pulsera);
+  opacity: .85;
+  min-height: 10px;
+}
+/* 🔑 Noche sin medir: carril discontinuo de altura completa. Ni barra a 0 ni
+   nada: la ausencia tiene que ocupar sitio para que se vea que falta. */
+.barra-noche.hueca {
+  height: 100%;
+  background: transparent;
+  border: 1px dashed var(--linea);
+}
+.pie-semana {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.pie-semana span {
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  font-weight: 600;
+  color: var(--texto-3);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  SUEÑO — el hipnograma
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.hipnograma { display: flex; flex-direction: column; gap: 5px; }
+
+.carril { display: flex; align-items: center; gap: 10px; }
+
+.carril-nombre {
+  width: 74px;
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--texto-2);
+}
+
+.carril-pista {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--fondo-2);
+  border: 1px solid var(--linea-suave);
+}
+
+.segmento {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 5px;
+}
+
+.carril-minutos {
+  width: 62px;
+  flex: none;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-2);
+}
+
+.marcas-hora {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+}
+.marca-hora {
+  position: absolute;
+  transform: translateX(-50%);
+  font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto-3);
+}
+
+/* Lista de noches. */
+.fila-noche {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 1px solid var(--linea-suave);
+  background: var(--fondo-2);
+  transition: border-color .14s, box-shadow .14s;
+  text-align: left;
+  width: 100%;
+}
+.fila-noche:hover { border-color: var(--texto-3); }
+.fila-noche.elegida {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--primario);
+}
+
+.noche-fecha {
+  width: 104px;
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.noche-dia-num { font-size: 13px; font-weight: 600; color: var(--texto); }
+/* El finde se subraya en vez de colorearse: los cuatro acentos ya significan
+   otra cosa y añadir un quinto obligaría a mirar la leyenda. */
+.noche-dia-sem { font-size: 11px; font-weight: 600; color: var(--texto-3); }
+.noche-dia-sem.finde {
+  color: var(--texto);
+  border-bottom: 1px solid var(--linea);
+}
+
+.tira-noche {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  height: 22px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--linea-suave);
+}
+
+.noche-duracion {
+  width: 92px;
+  flex: none;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+}
+.noche-eficiencia {
+  width: 62px;
+  flex: none;
+  text-align: right;
+  font-size: 12px;
+  color: var(--texto-2);
+}
+
+@media (max-width: 640px) {
+  .carril-nombre { width: 58px; }
+  .noche-fecha { width: 84px; }
+  .noche-duracion { width: 76px; }
+  .noche-eficiencia { display: none; }
+}
+
+/* Las dos cajas del corte entresemana/finde. */
+.corte { display: flex; gap: 12px; }
+.corte > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px solid var(--linea);
+  background: var(--fondo-2);
+}
+.corte-valor { font-size: 24px; font-weight: 600; letter-spacing: -.03em; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  CORAZÓN
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.chips { display: flex; gap: 7px; flex-wrap: wrap; }
+
+.chip {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--linea);
+  background: transparent;
+  color: var(--texto-2);
+}
+.chip:hover { border-color: var(--texto-3); color: var(--texto); }
+.chip.activo {
+  border-color: transparent;
+  background: var(--superficie-2);
+  color: var(--texto);
+}
+
+.conmutador {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  background: var(--fondo-2);
+  flex: none;
+}
+.conmutador button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--texto-3);
+}
+.conmutador button.activo { background: var(--superficie-2); color: var(--texto); }
+
+.grafica { display: flex; gap: 12px; }
+
+.eje-y {
+  width: 52px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 2px 0;
+  font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto-3);
+}
+
+.lienzo {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--linea);
+  padding-bottom: 1px;
+}
+
+.eje-x { display: flex; }
+.eje-x span {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto-3);
+}
+
+.columna-dato {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 6px;
+}
+
+.barra-dato {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  background: var(--c-pulsera);
+  opacity: .85;
+}
+/* Día sin medición. Ocupa toda la altura para que el hueco se vea. */
+.barra-dato.hueca {
+  height: 100%;
+  border: 1px dashed var(--linea);
+  border-radius: 8px;
+  background: transparent;
+  opacity: 1;
+}
+
+/* Banda mín-máx con la media marcada dentro. Una sola línea de medias esconde
+   justo lo que distingue un día de otro. */
+.banda {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--c-pulsera) 32%, transparent);
+}
+.marca-media {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--c-pulsera);
+}
+
+/* Resolución minuto: cientos de columnas finas, sin separación ni radio. */
+.lienzo.minuto { gap: 1px; }
+.lienzo.minuto .columna-dato { padding: 0; }
+.lienzo.minuto .barra-dato { border-radius: 2px 2px 0 0; }
+.lienzo.minuto .barra-dato.hueca {
+  border: none;
+  border-left: 1px dashed var(--linea);
+  border-radius: 0;
+  opacity: .5;
+}
+
+.leyenda-grafica {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.leyenda-grafica > div { display: flex; align-items: center; gap: 7px; }
+.leyenda-grafica span:last-child { font-size: 11.5px; color: var(--texto-2); }
+.marca-leyenda { display: block; width: 12px; height: 12px; border-radius: 4px; }
+
+.cobertura {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--linea-suave);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cobertura-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--fondo-2);
+}
+.cobertura-nombre {
+  width: 188px;
+  flex: none;
+  font: 500 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto);
+}
+.cobertura-pista {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--linea-suave);
+  overflow: hidden;
+}
+.cobertura-relleno { height: 100%; border-radius: 999px; }
+.cobertura-detalle {
+  width: 120px;
+  flex: none;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--texto-2);
+}
+@media (max-width: 640px) {
+  .cobertura-nombre { width: 116px; font-size: 11px; }
+  .cobertura-detalle { width: 84px; font-size: 11px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  PANEL DEL DÍA — la única pantalla de escritura
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.panel {
+  border: 1px solid var(--linea);
+  border-radius: 18px;
+  background: var(--fondo-2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--linea-suave);
+}
+
+.panel-titulo-fila {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.panel-fecha { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+
+.boton-cerrar {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 15px;
+}
+
+/* Un día puntuado tres días después vale menos, y la base lo sabe: guarda
+   `registrado_en` aparte de `fecha`. Si no se ve, no sirve de nada. */
+.pastilla-retro {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  border: 1px dashed var(--linea);
+  color: var(--texto-2);
+  font-size: 11.5px;
+}
+.pastilla-retro span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--texto-3);
+  display: block;
+}
+
+.panel-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 22px;
+}
+
+/* Las once casillas del 0 al 10. */
+.escala-puntos { display: flex; gap: 4px; }
+
+.punto-escala {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--linea-suave);
+  background: var(--fondo-2);
+  color: var(--texto-3);
+  transition: background .12s, border-color .12s, color .12s;
+}
+.punto-escala:hover { border-color: var(--linea); color: var(--texto); }
+/* 🔑 Sin registrar NO hay ninguna casilla marcada, que es distinto de tener
+   marcada la del 0. El 0 es una respuesta; el hueco no lo es. */
+.punto-escala.elegido {
+  border-color: transparent;
+  background: var(--c-subjetivo);
+  color: oklch(0.15 0.01 300);
+}
+
+.campo-nota {
+  min-height: 56px;
+  width: 100%;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--fondo-2);
+  padding: 11px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--texto);
+  resize: vertical;
+}
+.campo-nota::placeholder { color: var(--texto-3); }
+
+.atajos { display: flex; gap: 8px; flex-wrap: wrap; }
+.atajo {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.atajo:hover { border-color: var(--c-consumos); }
+.atajo:disabled { opacity: .5; cursor: progress; }
+.atajo b { color: var(--texto-3); font-weight: 500; }
+
+.lista-consumos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--linea-suave);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.consumo-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--fondo-2);
+}
+.consumo-hora {
+  font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto);
+  flex: none;
+}
+.consumo-hora.sin-hora { color: var(--texto-3); font-weight: 400; }
+.consumo-punto {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--c-consumos);
+  display: block;
+  flex: none;
+}
+.consumo-texto { flex: 1; min-width: 0; font-size: 13px; color: var(--texto); }
+.boton-borrar {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 9px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 13px;
+  color: var(--texto-3);
+}
+.boton-borrar:hover { color: var(--negativo); border-color: var(--linea); }
+
+.frecuente {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--linea-suave);
+  border-radius: 14px;
+  background: var(--fondo-2);
+}
+.frecuente-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+/* Las descripciones reales pasan de 200 caracteres: se recortan a dos líneas
+   para que la lista siga siendo escaneable. */
+.frecuente-desc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--texto);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.frecuente-meta { font-size: 11.5px; color: var(--texto-3); }
+.boton-repetir {
+  flex: none;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  font-size: 13px;
+  font-weight: 600;
+}
+.boton-repetir:hover { border-color: var(--c-comidas); }
+.boton-repetir:disabled { opacity: .5; cursor: progress; }
+
+.comida-registrada {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 13px;
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  background: var(--fondo-2);
+}
+.comida-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.comida-hora {
+  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto-3);
+}
+.comida-kcal { font-size: 12.5px; font-weight: 600; color: var(--texto-2); }
+.comida-desc { font-size: 13px; line-height: 1.5; color: var(--texto); text-wrap: pretty; }
+.macros { display: flex; gap: 6px; flex-wrap: wrap; }
+.macro {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--linea-suave);
+  font-size: 11px;
+  color: var(--texto-2);
+}
+
+.boton-guardar {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primario);
+  color: var(--primario-texto);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.boton-guardar:hover { filter: brightness(1.08); color: var(--primario-texto); }
+.boton-guardar:disabled { opacity: .55; cursor: not-allowed; filter: none; }
+
+.boton-secundario {
+  height: 44px;
+  border-radius: 12px;
+  border-style: dashed;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-2);
+}
+.boton-secundario:hover { color: var(--texto); border-color: var(--texto-3); }
+
+/* En escritorio el panel va a la derecha de la rejilla; en móvil, debajo. */
+.calendario-con-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 460px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1180px) {
+  .calendario-con-panel { grid-template-columns: 1fr; }
+}

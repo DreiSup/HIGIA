@@ -1,353 +1,394 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { API, traerMes, type Dia } from "@/lib/api";
+import Link from "next/link";
+import {
+  traerDia, traerDias, traerNoches, traerSemanas,
+  type DiaCompleto, type Noche, type Semana,
+} from "@/lib/api";
+import {
+  DIAS_CORTOS, HUECO, denominador, duracion, fechaCorta, fechaLarga, hoyLocal,
+  num, plural, sumarDias,
+} from "@/lib/formato";
+import { Cargando, Cifra, ErrorBloque, usar, type Estado } from "./piezas";
 
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
-  "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-const DIAS_CORTOS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
-const DIAS_LARGOS = ["lunes", "martes", "miércoles", "jueves", "viernes",
-  "sábado", "domingo"];
-
-/** Los cuatro tipos de registro, en el orden en que se leen en la celda.
- *
- * La letra y el color son los mismos en la celda, en la leyenda y en el resumen.
- * Si cambiaran de sitio a sitio habría que consultar la leyenda cada vez. */
+/** Los cuatro tipos de registro. Mismo orden, misma letra y mismo color que en
+ *  la rejilla del calendario: si cambiaran de sitio a sitio habría que leer la
+ *  leyenda cada vez. */
 const TIPOS = [
-  { bandera: "tiene_subjetivo", letra: "S", nombre: "Subjetivo", clase: "c-subjetivo" },
-  { bandera: "tiene_comidas", letra: "C", nombre: "Comidas", clase: "c-comidas" },
-  { bandera: "tiene_consumos", letra: "T", nombre: "Consumos", clase: "c-consumos" },
-  { bandera: "tiene_pulsera", letra: "P", nombre: "Pulsera", clase: "c-pulsera" },
+  { letra: "S", nombre: "Subjetivo", clase: "c-subjetivo" },
+  { letra: "C", nombre: "Comidas", clase: "c-comidas" },
+  { letra: "T", nombre: "Consumos", clase: "c-consumos" },
+  { letra: "P", nombre: "Pulsera", clase: "c-pulsera" },
 ] as const;
 
-type Tema = "oscuro" | "claro";
-
-/** Fecha de hoy en horario local, AAAA-MM-DD.
- *
- * ⚠️ Con `toISOString()` esto daría UTC: a las 00:30 de Madrid marcaría como
- *    "hoy" el día anterior. Es la misma trampa que ya apareció en la base con
- *    `time_bucket`. */
-function hoyLocal(): string {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
+/** El lunes de la semana de `fecha`. La semana empieza en lunes, como en la
+ *  rejilla y como en `/salud/semanas` (`semana_inicio` es siempre un lunes). */
+function lunesDe(fecha: string): string {
+  const [a, m, d] = fecha.split("-").map(Number);
+  return sumarDias(fecha, -((new Date(a, m - 1, d).getDay() + 6) % 7));
 }
 
-function fechaISO(anio: number, mes: number, dia: number): string {
-  return `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-}
-
-/** Día de la semana empezando en LUNES (0=lunes … 6=domingo). */
-function diaDeLaSemana(anio: number, mes: number, dia: number): number {
-  return (new Date(anio, mes - 1, dia).getDay() + 6) % 7;
-}
-
-function diasDelMes(anio: number, mes: number): number {
-  return new Date(anio, mes, 0).getDate();
-}
-
-const num = (n: number) => n.toLocaleString("es-ES");
-
-/** Minutos → "6,3 h". Coma decimal, que es como se escribe en español. */
-const horas = (minutos: number) =>
-  `${(minutos / 60).toFixed(1).replace(".", ",")} h`;
-
-function tieneAlgo(d: Dia | undefined): boolean {
-  return !!d && TIPOS.some((t) => d[t.bandera]);
-}
-
-/** Lo que se enseña de cada tipo en el resumen del día.
- *
- * 🔑 `null` significa "no hay dato" y se pinta "—". Nunca 0: la API ya se
- *    encarga de no mandar ceros falsos y aquí no se van a inventar. */
-function valorResumen(d: Dia | undefined, bandera: string): string | null {
-  if (!d || !d[bandera as keyof Dia]) return null;
-
-  if (bandera === "tiene_subjetivo") {
-    const tres = [d.como_me_siento, d.animo, d.energia];
-    if (tres.every((n) => n == null)) return "Registrado";
-    return tres.map((n) => (n == null ? "—" : n)).join(" · ");
-  }
-
-  if (bandera === "tiene_comidas") {
-    const partes = [`${d.comidas} ${d.comidas === 1 ? "comida" : "comidas"}`];
-    if (d.kcal_consumidas != null) {
-      partes.push(`${num(Math.round(d.kcal_consumidas))} kcal`);
-    }
-    return partes.join(" · ");
-  }
-
-  if (bandera === "tiene_pulsera") {
-    const partes: string[] = [];
-    if (d.minutos_dormido != null) partes.push(horas(d.minutos_dormido));
-    if (d.pasos != null) partes.push(`${num(d.pasos)} pasos`);
-    return partes.length ? partes.join(" · ") : "Registrado";
-  }
-
-  // Consumos: `/calendario` devuelve la bandera, no el detalle. El desglose por
-  // toma vive en `/consumos?fecha=`, y es del panel del día (paso 3).
-  return "Registrado";
-}
-
-export default function Calendario() {
+export default function Hoy() {
   const hoy = hoyLocal();
-  const [anio, setAnio] = useState(() => Number(hoy.slice(0, 4)));
-  const [mes, setMes] = useState(() => Number(hoy.slice(5, 7)));
-  const [dias, setDias] = useState<Dia[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [seleccion, setSeleccion] = useState(hoy);
-  // `null` hasta que se monta: en el servidor no se sabe qué tema toca, y
-  // adivinarlo es lo que rompía la hidratación. Mientras es `null`, el botón no
-  // afirma nada.
-  const [tema, setTema] = useState<Tema | null>(null);
+  const lunes = lunesDe(hoy);
+  const domingo = sumarDias(lunes, 6);
 
-  useEffect(() => {
-    const guardado = localStorage.getItem("higia-tema");
-    if (guardado === "claro" || guardado === "oscuro") {
-      setTema(guardado);
-      document.documentElement.dataset.tema = guardado;
-      return;
-    }
-    // Sin elección guardada manda el sistema, que es lo que el CSS ya pinta.
-    const claro = window.matchMedia("(prefers-color-scheme: light)").matches;
-    setTema(claro ? "claro" : "oscuro");
-  }, []);
+  const [dia, recargarDia] = usar(() => traerDia(hoy), [hoy]);
+  const [semana, recargarSemana] = usar(() => traerSemanas(1), []);
+  const [dias, recargarDias] = usar(() => traerDias(lunes, domingo), [lunes, domingo]);
+  const [noches, recargarNoches] = usar(() => traerNoches(1), []);
 
-  function alternarTema() {
-    const nuevo: Tema = tema === "claro" ? "oscuro" : "claro";
-    setTema(nuevo);
-    localStorage.setItem("higia-tema", nuevo);
-    document.documentElement.dataset.tema = nuevo;
-  }
-
-  const cargar = useCallback(() => {
-    setError(null);
-    setDias(null);
-    traerMes(anio, mes)
-      .then(setDias)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [anio, mes]);
-
-  useEffect(cargar, [cargar]);
-
-  function mover(delta: number) {
-    const m = mes + delta;
-    if (m < 1) { setAnio(anio - 1); setMes(12); } else
-    if (m > 12) { setAnio(anio + 1); setMes(1); } else setMes(m);
-  }
-
-  const porFecha = new Map((dias ?? []).map((d) => [d.fecha, d]));
-  const conDatos = (dias ?? []).filter((d) => tieneAlgo(d)).length;
-  const nombreMes = MESES[mes - 1];
-  const titulo = nombreMes[0].toUpperCase() + nombreMes.slice(1) + " " + anio;
-
-  let subtitulo: string;
-  if (error) subtitulo = "Sin lectura del mes";
-  else if (!dias) subtitulo = `Leyendo ${nombreMes}…`;
-  else if (conDatos === 0) {
-    subtitulo = `Ningún día registrado en ${nombreMes}. Normal: los huecos no se rellenan.`;
-  } else {
-    subtitulo = conDatos === 1 ? "1 día con registros"
-      : `${conDatos} días con registros`;
+  function recargarTodo() {
+    recargarDia(); recargarSemana(); recargarDias(); recargarNoches();
   }
 
   return (
     <div className="pagina">
       <div className="columna">
 
-        <div className="tira">
-          <div className="marca">
-            <div className="kicker">Higía · seguimiento personal</div>
-            <div className="lema">
-              Un hueco es un hueco. Los días sin registrar no muestran ceros ni
-              anillos: no muestran nada.
-            </div>
-          </div>
-          <button className="boton-pildora" onClick={alternarTema}>
-            {tema === "claro" ? "Tema oscuro" : "Tema claro"}
-          </button>
-        </div>
-
-        <div className="mes">
+        <div className="cabecera-vista">
           <div>
-            <h1>{titulo}</h1>
-            <div className="subtitulo">{subtitulo}</div>
+            <div className="kicker">Higía · Hoy</div>
+            <h1>{fechaLarga(hoy)}</h1>
+            <div className="subtitulo">
+              Lo diario ya se ve en Google Health. Lo que aporta Higía es qué te
+              falta de hoy y cómo va la semana.
+            </div>
           </div>
-          <div className="navegacion">
-            <button className="boton-icono" onClick={() => mover(-1)}
-                    aria-label="Mes anterior">‹</button>
-            <button className="boton" onClick={() => {
-              setAnio(Number(hoy.slice(0, 4)));
-              setMes(Number(hoy.slice(5, 7)));
-              setSeleccion(hoy);
-            }}>Hoy</button>
-            <button className="boton-icono" onClick={() => mover(1)}
-                    aria-label="Mes siguiente">›</button>
+          <div className="ruta">
+            GET /dia/{hoy}<br />GET /salud/semanas
           </div>
         </div>
 
-        {/* 🔑 Con la API caída NO se dibuja ninguna celda. Pintar 31 huecos sería
-            inventarse el dato: "no se pudo leer" y "no registré nada" son cosas
-            distintas y la pantalla tiene que decir cuál de las dos es. */}
-        {error && (
-          <div className="error">
-            <div className="error-etiqueta">
-              <span /> Error de conexión
-            </div>
-            <h2>No se ha podido leer {nombreMes} de {anio}</h2>
-            <p>
-              La API no ha respondido, así que{" "}
-              <strong>no se sabe qué hay en este mes</strong>. No es un mes
-              vacío: es un mes que no se ha podido leer. Por eso no se dibuja
-              ninguna celda — pintar {diasDelMes(anio, mes)} huecos sería
-              inventarse el dato.
-            </p>
-            <div className="mono">GET {API}/calendario/{anio}/{mes}</div>
-            <div className="mono-error">{error}</div>
-            <button className="boton-error" onClick={cargar}>Reintentar</button>
-          </div>
-        )}
+        <QueFalta dia={dia} recargar={recargarDia} hoy={hoy} />
 
-        {!error && (
-          <div className="rejilla-bloque">
-            <div className="semana">
-              {DIAS_CORTOS.map((d, i) => (
-                <div key={d} className={"dia-semana" + (i > 4 ? " finde" : "")}>
-                  {d}
-                </div>
-              ))}
-            </div>
-            <div className="rejilla">
-              <Celdas anio={anio} mes={mes} hoy={hoy} porFecha={porFecha}
-                      cargando={!dias} seleccion={seleccion}
-                      elegir={setSeleccion} />
-            </div>
-          </div>
-        )}
-
-        {dias && !error && (
-          <Resumen dia={porFecha.get(seleccion)} fecha={seleccion} hoy={hoy} />
-        )}
-
-        <div className="leyenda">
-          {TIPOS.map((t) => (
-            <div key={t.letra}>
-              <span className={"leyenda-marca " + t.clase}>{t.letra}</span>
-              <span>{t.nombre}</span>
-            </div>
-          ))}
-          <div className="leyenda-hueco">
-            <span className="leyenda-marca">—</span>
-            <span>Sin dato (no es un cero)</span>
-          </div>
+        <div className="par">
+          <UltimaNoche noches={noches} hoy={hoy} recargar={recargarNoches} />
+          <ComoEstoy dia={dia} />
         </div>
+
+        <LaSemana semana={semana} dias={dias} lunes={lunes} domingo={domingo}
+                  recargar={() => { recargarSemana(); recargarDias(); }} />
+
+        {(dia.error || semana.error || dias.error || noches.error) && (
+          <button className="boton" onClick={recargarTodo}>Reintentar todo</button>
+        )}
 
       </div>
     </div>
   );
 }
 
-function Celdas({ anio, mes, hoy, porFecha, cargando, seleccion, elegir }: {
-  anio: number; mes: number; hoy: string;
-  porFecha: Map<string, Dia>; cargando: boolean;
-  seleccion: string; elegir: (f: string) => void;
+// ── Bloque 1 · ¿Qué me falta por registrar hoy? ───────────────────────────────
+
+function QueFalta({ dia, recargar, hoy }: {
+  dia: Estado<DiaCompleto>; recargar: () => void; hoy: string;
 }) {
-  const total = diasDelMes(anio, mes);
-  const desplazamiento = diaDeLaSemana(anio, mes, 1);
-  const celdas: React.ReactNode[] = [];
-
-  for (let i = 0; i < desplazamiento; i++) {
-    celdas.push(<div key={`antes-${i}`} className="relleno" />);
+  if (dia.cargando) return <Cargando alto={190} />;
+  if (dia.error) {
+    return <ErrorBloque que="el día de hoy" ruta={`GET /dia/${hoy}`}
+                        error={dia.error} recargar={recargar} />;
   }
+  const d = dia.dato!;
 
-  for (let d = 1; d <= total; d++) {
-    const fecha = fechaISO(anio, mes, d);
+  const haySubjetivo = d.como_me_siento != null || d.animo != null ||
+    d.energia != null || d.nota_dia != null;
+  const hayComidas = (d.comidas ?? 0) > 0;
+  const hayConsumos = (d.consumos?.length ?? 0) > 0;
+  const hayPulsera = d.minutos_dormido != null || d.pasos != null ||
+    d.pulsaciones_media != null;
 
-    if (cargando) {
-      // La rejilla late con el mes ya dibujado en vez de desaparecer: así el
-      // contenido no salta de sitio cuando llegan los datos.
-      celdas.push(
-        <div key={fecha} className="celda cargando"
-             style={{ animationDelay: `${(d % 7) * 0.06}s` }}>
-          <span className="numero">{d}</span>
-          <div className="senales" />
-        </div>,
-      );
-      continue;
-    }
+  const detalles: Record<string, { hay: boolean; estado: string; detalle: string }> = {
+    S: {
+      hay: haySubjetivo,
+      estado: haySubjetivo ? "Registrado" : "Falta",
+      detalle: haySubjetivo
+        ? [d.como_me_siento, d.animo, d.energia].map((n) => n ?? HUECO).join(" · ")
+        : "Tres números 0-10, unos segundos",
+    },
+    C: {
+      hay: hayComidas,
+      estado: hayComidas ? plural(d.comidas!, "comida") : "Falta",
+      detalle: hayComidas
+        ? `${num(d.kcal_consumidas, 0)} kcal calculadas de los ingredientes`
+        : "Repetir una frecuente es un toque",
+    },
+    T: {
+      hay: hayConsumos,
+      estado: hayConsumos ? plural(d.consumos!.length, "toma") : "Falta",
+      detalle: hayConsumos
+        ? "Café, nicotina, suplementos"
+        : "La hora es parte del dato",
+    },
+    P: {
+      hay: hayPulsera,
+      estado: hayPulsera ? "Sincronizado" : "Sin lectura",
+      // 🔑 La pulsera no depende del usuario: no es una tarea pendiente suya.
+      detalle: hayPulsera
+        ? `${num(d.pasos, 0)} pasos`
+        : "Entra por un export manual de Takeout",
+    },
+  };
 
-    const dato = porFecha.get(fecha);
-    const clases = ["celda"];
-    if (tieneAlgo(dato)) clases.push("con-datos");
-    // Un día que aún no ha pasado no es un hueco: no había nada que registrar.
-    const futuro = fecha > hoy;
-    if (futuro) clases.push("futuro");
-    if (fecha === seleccion) clases.push("elegido");
-
-    celdas.push(
-      <div key={fecha} className={clases.join(" ")} title={fecha}
-           onClick={futuro ? undefined : () => elegir(fecha)}>
-        <span className={"numero" + (fecha === hoy ? " hoy" : "")}>{d}</span>
-        <div className="senales">
-          {TIPOS.map((t) => (
-            <span key={t.letra} className="hueco-senal">
-              <span className={
-                "senal " + t.clase + (dato?.[t.bandera] ? "" : " ausente")
-              }>{t.letra}</span>
-            </span>
-          ))}
-        </div>
-      </div>,
-    );
-  }
-
-  while (celdas.length % 7 !== 0) {
-    celdas.push(<div key={`despues-${celdas.length}`} className="relleno" />);
-  }
-
-  return <>{celdas}</>;
-}
-
-function Resumen({ dia, fecha, hoy }: {
-  dia: Dia | undefined; fecha: string; hoy: string;
-}) {
-  const [a, m, d] = fecha.split("-").map(Number);
-  const nombreDia = DIAS_LARGOS[diaDeLaSemana(a, m, d)];
-  const titulo = nombreDia[0].toUpperCase() + nombreDia.slice(1) +
-    `, ${d} de ${MESES[m - 1]}`;
-
-  let nota = tieneAlgo(dia)
-    ? "Solo lectura · el panel del día es el paso 2"
-    : "Día sin registros";
-  if (fecha === hoy) nota = "Hoy · " + nota.toLowerCase();
-  else if (fecha > hoy) nota = "Día futuro";
+  const faltan = TIPOS.filter((t) => !detalles[t.letra].hay);
+  // La pulsera no cuenta como tarea: no se registra a mano.
+  const pendientes = faltan.filter((t) => t.letra !== "P").length;
 
   return (
-    <div className="resumen">
-      <div className="resumen-cabecera">
-        <div className="resumen-fecha">{titulo}</div>
-        <div className="resumen-nota">{nota}</div>
+    <div className="tarjeta">
+      <div className="tarjeta-cabecera">
+        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-.01em" }}>
+          {pendientes === 0 ? "Hoy está registrado" : "¿Qué te falta de hoy?"}
+        </span>
+        <span className="nota-menor">
+          {pendientes === 0
+            ? "Nada pendiente"
+            : `Faltan ${pendientes} de 3 · la pulsera no depende de ti`}
+        </span>
       </div>
-      <div className="cajas">
+
+      <div className="senales-hoy">
         {TIPOS.map((t) => {
-          const valor = valorResumen(dia, t.bandera);
+          const info = detalles[t.letra];
           return (
-            <div key={t.letra} className={"caja" + (valor ? " presente" : "")}>
-              <div className="caja-etiqueta">
-                {/* La clase es el nombre del token: `c-comidas` → `--c-comidas`. */}
-                <span className="punto"
-                      style={valor ? {
-                        background: `var(--${t.clase})`,
-                        borderColor: `var(--${t.clase})`,
-                      } : undefined} />
-                {t.nombre}
+            <div key={t.letra}
+                 className={"senal-caja" + (info.hay ? " presente" : "")}>
+              <div className="senal-caja-cabecera">
+                <span className={"senal-letra " + t.clase}>{t.letra}</span>
+                <span className="senal-nombre">{t.nombre}</span>
               </div>
-              <div className="caja-valor">{valor ?? "—"}</div>
+              <div className="senal-estado">{info.estado}</div>
+              <div className="nota-fina">{info.detalle}</div>
             </div>
           );
         })}
       </div>
+
+      {/* 🔴 El botón NO dice "registrar": todavía no se puede. El calendario es
+          de solo lectura hasta el paso 2, y un botón que promete escribir es la
+          clase de mentira que este proyecto no se puede permitir. */}
+      <div className="fila-accion">
+        <Link className="boton-accion" href="/calendario">
+          Abrir el día en el calendario
+        </Link>
+        <span className="nota-fina">
+          Escribir llega con el panel del día · paso 2
+        </span>
+      </div>
     </div>
   );
 }
+
+// ── Bloque 2 · La última noche ────────────────────────────────────────────────
+
+function UltimaNoche({ noches, hoy, recargar }: {
+  noches: Estado<Noche[]>; hoy: string; recargar: () => void;
+}) {
+  if (noches.cargando) return <Cargando alto={220} />;
+  if (noches.error) {
+    return <ErrorBloque que="la última noche" ruta="GET /salud/sueno?limite=1"
+                        error={noches.error} recargar={recargar} />;
+  }
+
+  const n = noches.dato?.[0];
+  const ayer = sumarDias(hoy, -1);
+  // 🔑 "Anoche" solo si la última noche registrada es de verdad la de ayer. Con
+  //    el último export del 13 de agosto, llamar "anoche" a esa noche sería
+  //    falso: se dice qué noche es y cuánto hace de ella.
+  const esAnoche = n?.noche === ayer;
+
+  return (
+    <div className="tarjeta">
+      <div className="rotulo">
+        <span className="rotulo-punto" style={{ background: "var(--c-pulsera)" }} />
+        {esAnoche ? "Cómo dormiste anoche" : "La última noche registrada"}
+      </div>
+
+      {!n ? (
+        <div className="vacio">
+          <span className="vacio-titulo">Ninguna noche registrada</span>
+          <span className="vacio-texto">
+            No es una noche de 0 horas: es que no hay ninguna noche en la base.
+            Los datos de la pulsera entran por un export manual de Takeout.
+          </span>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <span className="cifra-grande">{duracion(n.minutos_dormido)}</span>
+            <span className="nota-menor">
+              dormido · {duracion(n.minutos_en_cama)} en cama
+            </span>
+          </div>
+
+          {!esAnoche && (
+            <div className="aviso">
+              Es la noche del {fechaCorta(n.noche)}, no la de anoche. Desde
+              entonces no ha entrado ningún dato nuevo de la pulsera, y eso es un
+              hueco, no un cero.
+            </div>
+          )}
+
+          <div className="cifras">
+            <Cifra etiqueta="Eficiencia"
+                   valor={n.eficiencia == null ? null : `${n.eficiencia} %`} />
+            <Cifra etiqueta="Despierto" valor={duracionONada(n.minutos_despierto)} />
+            <Cifra etiqueta="Horario"
+                   valor={`${n.hora_acostarse} → ${n.hora_levantarse}`} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const duracionONada = (m: number | null) => (m == null ? null : duracion(m));
+
+// ── Bloque 3 · Cómo estoy hoy ─────────────────────────────────────────────────
+
+function ComoEstoy({ dia }: { dia: Estado<DiaCompleto> }) {
+  if (dia.cargando) return <Cargando alto={220} />;
+  // El error ya lo cuenta el bloque de arriba, que usa la misma petición: no
+  // hace falta repetir la tarjeta de error dos veces.
+  if (dia.error) return null;
+  const d = dia.dato!;
+
+  const escalas = [
+    { nombre: "Cómo me siento", valor: d.como_me_siento },
+    { nombre: "Ánimo", valor: d.animo },
+    { nombre: "Energía", valor: d.energia },
+  ];
+  const vacio = escalas.every((e) => e.valor == null);
+
+  return (
+    <div className="tarjeta">
+      <div className="rotulo">
+        <span className="rotulo-punto" style={{ background: "var(--c-subjetivo)" }} />
+        Cómo estás hoy
+      </div>
+
+      <div className="pila">
+        {escalas.map((e) => (
+          <div key={e.nombre} className="escala-lectura">
+            <div className="escala-cabecera">
+              <span>{e.nombre}</span>
+              <span className={"escala-valor" + (e.valor == null ? " hueca" : "")}>
+                {e.valor == null ? "sin registrar" : `${e.valor} / 10`}
+              </span>
+            </div>
+            <div className={"escala-barra" + (e.valor == null ? " hueca" : "")}>
+              {e.valor != null && (
+                <div className="escala-relleno" style={{ width: `${e.valor * 10}%` }} />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {vacio && (
+        <span className="nota-fina">
+          Sin registrar. Un carril vacío no es un 0: el 0 es una respuesta y esto
+          es la ausencia de respuesta.
+        </span>
+      )}
+
+      {d.nota_dia && <div className="aviso">{d.nota_dia}</div>}
+    </div>
+  );
+}
+
+// ── Bloque 4 · Cómo va la semana ──────────────────────────────────────────────
+
+function LaSemana({ semana, dias, lunes, domingo, recargar }: {
+  semana: Estado<Semana[]>; dias: Estado<DiaCompleto[]>;
+  lunes: string; domingo: string; recargar: () => void;
+}) {
+  if (semana.cargando || dias.cargando) return <Cargando alto={280} />;
+  if (semana.error || dias.error) {
+    return <ErrorBloque que="la semana"
+                        ruta={semana.error ? "GET /salud/semanas"
+                                           : `GET /dias?desde=${lunes}&hasta=${domingo}`}
+                        error={(semana.error ?? dias.error)!} recargar={recargar} />;
+  }
+
+  // 🔑 `/salud/semanas` devuelve las semanas que TIENEN algo. Si la semana en
+  //    curso no aparece, no se coge la anterior y se hace pasar por esta: se
+  //    dice que esta semana no tiene nada todavía.
+  const s = semana.dato!.find((x) => x.semana_inicio === lunes) ?? null;
+
+  // El eje de siete días lo construye la pantalla. `/dias` solo devuelve los
+  // días que existen: las fechas que falten son huecos reales.
+  const porFecha = new Map((dias.dato ?? []).map((d) => [d.fecha, d]));
+  const noches = Array.from({ length: 7 }, (_, i) => {
+    const f = sumarDias(lunes, i);
+    return { fecha: f, minutos: porFecha.get(f)?.minutos_dormido ?? null };
+  });
+  const conDato = noches.filter((n) => n.minutos != null).length;
+  // Escala fija a 9 h: si el máximo lo pusiera la propia semana, una semana
+  // mala se vería igual de alta que una buena.
+  const TOPE = 9 * 60;
+
+  return (
+    <div className="tarjeta">
+      <div className="tarjeta-cabecera">
+        <div className="rotulo">Cómo va la semana</div>
+        <span className="nota-menor">
+          {fechaCorta(lunes)} → {fechaCorta(domingo)}
+        </span>
+      </div>
+
+      {!s ? (
+        <div className="vacio">
+          <span className="vacio-titulo">Esta semana no tiene nada todavía</span>
+          <span className="vacio-texto">
+            No se enseñan las medias de la semana pasada en su lugar: serían las
+            de otra semana.
+          </span>
+        </div>
+      ) : (
+        <div className="cifras">
+          {/* 🔴 Cada media con SU denominador pegado debajo. Una media de 2
+              noches y una de 7 no pueden parecer lo mismo. */}
+          <Cifra etiqueta="Sueño medio" valor={valorODuracion(s.dormido_min_media)}
+                 denominador={denominador(s.noches_con_dato, 7, "noches")} />
+          <Cifra etiqueta="Pasos medios" valor={valorONulo(s.pasos_media)}
+                 denominador={denominador(s.dias_con_dato, 7, "días con dato")} />
+          <Cifra etiqueta="Kcal consumidas" valor={valorONulo(s.kcal_consumidas_media)}
+                 denominador={denominador(s.dias_con_comida, 7, "días con comida")} />
+          {/* 🔴 Va la última y separada de las consumidas: no se restan. */}
+          <Cifra etiqueta="Kcal quemadas" valor={valorONulo(s.kcal_quemadas_media)}
+                 denominador="estimación de la pulsera ±20-30 %" />
+        </div>
+      )}
+
+      <div className="pila" style={{ gap: 8 }}>
+        <span className="nota-menor">
+          Sueño por noche · {conDato === 0
+            ? "ninguna noche medida esta semana"
+            : `${plural(conDato, "noche")} con dato de 7`}
+        </span>
+        <div className="barras-semana">
+          {noches.map((n) => (
+            <div key={n.fecha}
+                 className={"barra-noche" + (n.minutos == null ? " hueca" : "")}
+                 title={`${fechaCorta(n.fecha)} · ${n.minutos == null
+                   ? "sin medir" : duracion(n.minutos)}`}
+                 style={n.minutos == null ? undefined
+                   : { height: `${Math.min((n.minutos / TOPE) * 100, 100)}%` }} />
+          ))}
+        </div>
+        <div className="pie-semana">
+          {DIAS_CORTOS.map((d) => <span key={d}>{d}</span>)}
+        </div>
+      </div>
+
+      <span className="nota-fina">
+        Cada barra es la noche que EMPIEZA ese día: la del sábado es la del
+        sábado al domingo. Los días sin medir son carriles vacíos, no barras a 0.
+      </span>
+    </div>
+  );
+}
+
+const valorONulo = (n: number | null) => (n == null ? null : num(n, 0));
+const valorODuracion = (n: number | null) => (n == null ? null : duracion(n));

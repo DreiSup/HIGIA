@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import Marco from "./marco";
 import "./globales.css";
 
 // El diseño pide Inter, y aquí va **guardada en el repo** (48 KB, subconjunto
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={inter.className}>
-      <body>{children}</body>
+      <body><Marco>{children}</Marco></body>
     </html>
   );
 }
