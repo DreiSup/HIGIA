@@ -8,7 +8,7 @@ Uso individual, un solo usuario.
 | | |
 |---|---|
 | `backend/` | API en FastAPI |
-| `frontend/` | Interfaz en Next.js: el calendario de registro |
+| `frontend/` | Interfaz en Next.js: **Hoy** y el **calendario** de registro |
 | `db/` | Esquema y migraciones de PostgreSQL + TimescaleDB |
 | `scripts/` | Herramientas de datos (inspección y carga de exports de Google Takeout) |
 | `docker-compose.yml` | Base de datos, backend y frontend en local |
@@ -26,7 +26,7 @@ curl localhost:8000/health
 |---|---|
 | `localhost:5433` | La base. El 5432 suele estar ocupado |
 | `localhost:8000/docs` | La API, documentada |
-| `localhost:3000` | El calendario |
+| `localhost:3000` | La app: `/` es Hoy y `/calendario` la rejilla del mes |
 
 Los tres escuchan **solo en localhost**.
 
