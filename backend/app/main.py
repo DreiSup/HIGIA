@@ -89,6 +89,13 @@ def dia(fecha: date) -> dict:
     fila["consumos"] = bd.consultar(
         "SELECT id, sustancia, cantidad, unidad, momento, nota FROM consumos"
         " WHERE fecha = %s ORDER BY momento NULLS LAST, id", (fecha,))
+    # 🔑 `registrado_en` NO está en `v_dia_completo`, y sin él no se distingue
+    #    un día puntuado el mismo día de uno puntuado tres después — que es un
+    #    recuerdo, no una lectura. La pantalla tiene que poder decirlo.
+    #    Ver `wiki/panel-del-dia.md` en el vault, regla 4.
+    subjetivo = bd.consultar_uno(
+        "SELECT registrado_en FROM dia_subjetivo WHERE fecha = %s", (fecha,))
+    fila["subjetivo_registrado_en"] = subjetivo["registrado_en"] if subjetivo else None
     return fila
 
 

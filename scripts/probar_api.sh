@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Batería de humo de la API de Higía. 25 comprobaciones.
+# Batería de humo de la API de Higía. 26 comprobaciones.
 #
 #   ./scripts/probar_api.sh
 #
@@ -62,6 +62,17 @@ t "PUT /dia-subjetivo" 200 -X PUT "$A/dia-subjetivo" -H 'Content-Type: applicati
   -d '{"fecha":"1999-01-01","como_me_siento":7,"animo":6,"energia":5,"nota":"PRUEBA-AUTOMATICA"}'
 t "PUT fuera de la escala 0-10 → 422" 422 -X PUT "$A/dia-subjetivo" \
   -H 'Content-Type: application/json' -d '{"fecha":"1999-01-01","energia":11}'
+
+# El panel del día necesita saber CUÁNDO se escribió, no solo qué: un día
+# puntuado tres días después es un recuerdo, no una lectura. `registrado_en` no
+# está en `v_dia_completo`, así que /dia lo añade aparte y esto lo vigila.
+marca=$(curl -s "$A/dia/1999-01-01" | grep -o '"subjetivo_registrado_en":"[^"]*"' | wc -l)
+vacio=$(curl -s "$A/dia/2020-01-01" | grep -o '"subjetivo_registrado_en":null' | wc -l)
+if [ "$marca" = "1" ] && [ "$vacio" = "1" ]; then
+  echo "  ✅ /dia trae subjetivo_registrado_en (con fecha registrada y null sin ella)"; ok=$((ok+1))
+else
+  echo "  🔴 /dia no distingue registrado de sin registrar (marca=$marca vacio=$vacio)"; mal=$((mal+1))
+fi
 t "POST /consumos (normaliza la sustancia)" 201 -X POST "$A/consumos" \
   -H 'Content-Type: application/json' \
   -d '{"fecha":"1999-01-01","sustancia":"  CAFÉ  ","cantidad":1,"unidad":"taza"}'

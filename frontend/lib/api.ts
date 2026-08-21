@@ -126,6 +126,10 @@ export type DiaCompleto = {
   energia: number | null;
   nota_dia: string | null;
   // Solo en /dia/{fecha}, no en /dias:
+  /** Cuándo se escribió el subjetivo, que no es lo mismo que a qué día se
+   *  refiere. `null` = ese día no está registrado. Si va muy por detrás de
+   *  `fecha`, el dato es un recuerdo y la pantalla tiene que decirlo. */
+  subjetivo_registrado_en?: string | null;
   kcal_quemadas_aviso?: string;
   comidas_detalle?: ComidaResumen[];
   consumos?: Consumo[];
