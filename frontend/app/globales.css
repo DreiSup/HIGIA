@@ -29,6 +29,7 @@
      morado cambia de tema y el texto no, el número se pierde. */
   --c-subjetivo-texto: oklch(0.16 0.03 300);
   --c-comidas: oklch(0.76 0.13 65);
+  --c-comidas-texto: oklch(0.18 0.04 65);
   --c-consumos: oklch(0.72 0.14 20);
   /* Igual que `--c-subjetivo-texto`: el texto que va ENCIMA del color,
      definido con él. Si el rojo cambia de tema y el texto no, el botón
@@ -58,6 +59,7 @@
     --c-subjetivo: oklch(0.48 0.17 300);
     --c-subjetivo-texto: oklch(0.99 0 0);
     --c-comidas: oklch(0.55 0.14 65);
+    --c-comidas-texto: oklch(0.99 0 0);
     --c-consumos: oklch(0.52 0.18 20);
     --c-consumos-texto: oklch(0.99 0 0);
     --c-pulsera: oklch(0.50 0.17 255);
@@ -81,6 +83,7 @@
   --c-subjetivo: oklch(0.48 0.17 300);
   --c-subjetivo-texto: oklch(0.99 0 0);
   --c-comidas: oklch(0.55 0.14 65);
+  --c-comidas-texto: oklch(0.99 0 0);
   --c-consumos: oklch(0.52 0.18 20);
   --c-consumos-texto: oklch(0.99 0 0);
   --c-pulsera: oklch(0.50 0.17 255);
@@ -555,6 +558,9 @@ button {
   font-weight: 600;
 }
 .boton-error:hover { filter: brightness(1.08); color: oklch(0.99 0 0); }
+/* Dentro de una tarjeta en columna, un botón se estira a todo el ancho y pasa a
+   parecer la acción principal. Este no lo es: es la salida de un fallo. */
+.boton-en-linea { align-self: flex-start; }
 
 /* ── Leyenda ──────────────────────────────────────────────────────────── */
 
@@ -1559,68 +1565,215 @@ button {
 .vacio-fino { padding: 15px; border-radius: 12px; gap: 5px; }
 .vacio-fino .vacio-texto { font-size: 12px; }
 
+/* ── Las comidas: repetir es un toque, borrar cuesta ───────────────────────
+ *
+ * 🔑 Las frecuentes van ARRIBA, encima de lo ya registrado: si casi todo lo que
+ *    se come ya se ha comido, repetir es la pieza y la lista es consulta. Por
+ *    eso «Repetir» es el único botón de color sólido de la tarjeta.
+ *
+ * 🔴 Y el margen va PEGADO al número, nunca en un pie ni detrás de un toque:
+ *    los macros vienen de foto (±30-50 %) y esconder eso convierte una
+ *    estimación en una medida. */
+
+.panel-comidas { gap: 13px; }
+
+/* El resumen del día: la única cifra grande de la tarjeta. */
+.resumen-comidas {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--linea-suave);
+  background: var(--fondo-2);
+}
+.resumen-kcal {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* ── Las de siempre ───────────────────────────────────────────────────────── */
+
 .frecuente {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--linea-suave);
   border-radius: 14px;
   background: var(--fondo-2);
 }
-.frecuente-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-/* Las descripciones reales pasan de 200 caracteres: se recortan a dos líneas
-   para que la lista siga siendo escaneable. */
+.frecuente-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+/* Las descripciones reales pasan de 200 caracteres: dos líneas, para que la
+   lista siga siendo escaneable de un vistazo. */
 .frecuente-desc {
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--texto);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.frecuente-meta { font-size: 11.5px; color: var(--texto-3); }
+.frecuente-meta { font-size: 11.5px; line-height: 1.4; color: var(--texto-3); }
+
 .boton-repetir {
   flex: none;
-  height: 40px;
+  height: 44px;
   padding: 0 16px;
   border-radius: 12px;
-  background: var(--superficie-2);
-  color: var(--texto);
+  border-color: transparent;
+  background: var(--c-comidas);
+  color: var(--c-comidas-texto);
   font-size: 13px;
   font-weight: 600;
 }
-.boton-repetir:hover { border-color: var(--c-comidas); }
-.boton-repetir:disabled { opacity: .5; cursor: progress; }
+.boton-repetir:hover { filter: brightness(1.06); color: var(--c-comidas-texto); }
+.boton-repetir:disabled { opacity: .5; cursor: progress; filter: none; }
+
+/* ── Una comida registrada ────────────────────────────────────────────────── */
 
 .comida-registrada {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 12px 13px;
-  border: 1px solid var(--linea);
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--linea-suave);
   border-radius: 14px;
   background: var(--fondo-2);
 }
-.comida-cabecera {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
+.comida-registrada.en-vuelo { animation: latido 1.1s ease-in-out infinite; }
+
+.comida-cabecera { display: flex; align-items: flex-start; gap: 11px; }
 .comida-hora {
-  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--texto-3);
+  flex: none;
+  white-space: nowrap;
+  width: 44px;
+  padding-top: 1px;
+  font: 600 12.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto);
 }
-.comida-kcal { font-size: 12.5px; font-weight: 600; color: var(--texto-2); }
-.comida-desc { font-size: 13px; line-height: 1.5; color: var(--texto); text-wrap: pretty; }
-.macros { display: flex; gap: 6px; flex-wrap: wrap; }
+.comida-hora.sin-hora { width: 60px; font-weight: 400; color: var(--texto-3); }
+
+.comida-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.comida-desc { font-size: 13px; line-height: 1.45; color: var(--texto); text-wrap: pretty; }
+.comida-linea { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+/* 14,5 px, no tipografía de titular: es una suma de estimaciones. */
+.comida-kcal {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--texto);
+}
+.comida-kcal.hueca { color: var(--texto-3); }
+.comida-margen { font-size: 11.5px; color: var(--texto-2); }
+/* «sin margen» en cursiva, que es distinto de ±0. */
+.comida-margen.sin-margen { color: var(--texto-3); font-style: italic; }
+
+.comida-acciones { display: flex; gap: 4px; flex: none; }
+
+/* Desplegar los ingredientes no destruye nada, así que su hover NO es el rojo
+   de la ✕: dos botones vecinos con el mismo aviso enseñan a ignorarlo. */
+.boton-desplegar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--texto-3);
+  font-size: 12px;
+}
+.boton-desplegar:hover { color: var(--texto); border-color: var(--linea); }
+.boton-desplegar:disabled { opacity: .5; }
+
+/* Fila de una sola línea dentro de una tarjeta apilada: la usa la confirmación
+   de borrado, que ocupa el sitio de la comida sin mover a las de al lado. */
+.consumo-fila-plana { display: flex; align-items: center; gap: 10px; width: 100%; }
+
+/* ── Macros y avisos ──────────────────────────────────────────────────────── */
+
+.macros { display: flex; gap: 5px; flex-wrap: wrap; }
 .macro {
   padding: 3px 9px;
   border-radius: 999px;
   border: 1px solid var(--linea-suave);
   font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--texto-2);
+}
+/* 🔴 Discontinuo = NO HAY DATO, en toda la app: el carril vacío del subjetivo,
+   la toma sin hora, y aquí el macro que falta y el «no se sabe». */
+.macro.hueca { border-style: dashed; border-color: var(--linea); color: var(--texto-3); }
+.macro.presente { background: var(--superficie); color: var(--texto-2); }
+
+/* ── Los ingredientes, al desplegar ───────────────────────────────────────── */
+
+.ingredientes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--linea-suave);
+  background: var(--superficie);
+}
+.ingredientes-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mono-fina {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--texto-3);
+}
+
+.ingrediente {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--linea-suave);
+}
+.ingrediente:last-of-type { border-bottom: none; padding-bottom: 0; }
+.ingrediente-cantidad {
+  flex: none;
+  white-space: nowrap;
+  width: 54px;
+  font: 600 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto);
+}
+.ingrediente-cantidad.hueca { color: var(--texto-3); }
+.ingrediente-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ingrediente-nombre { font-size: 12.5px; line-height: 1.35; color: var(--texto); }
+.ingrediente-marca { font-size: 11px; color: var(--texto-3); }
+.ingrediente-marca.sin-marca { font-style: italic; }
+.ingrediente-derecha {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
+}
+/* De dónde sale la cantidad. `envase` va con borde porque es lo único contado;
+   `pesado` y `estimado` van en fondo neutro. Es lo que explica el margen. */
+.ingrediente-origen {
+  font-size: 10.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--superficie-2);
+  color: var(--texto-3);
+}
+.ingrediente-origen.contado {
+  background: transparent;
+  border: 1px solid var(--linea-suave);
   color: var(--texto-2);
 }
 

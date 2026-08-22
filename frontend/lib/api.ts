@@ -214,6 +214,9 @@ export type ItemComida = {
   nota: string | null;
   kcal: number | null;
   prot_g: number | null;
+  /** "si" | "no" | null. Texto, no booleano: son los tres estados del catálogo. */
+  lactosa?: string | null;
+  gluten?: string | null;
 };
 
 export type ComidaDetalle = ComidaResumen & {
@@ -306,6 +309,13 @@ export const crearConsumo = (entrada: {
 
 export const borrarConsumo = (id: number) =>
   enviar<void>("DELETE", `/consumos/${id}`);
+
+/** 🔴 No existe `PUT /comidas/{id}`: una comida no se corrige, se borra y se
+ *  vuelve a componer — que aquí cuesta mucho más que en consumos, porque son
+ *  varios ingredientes con su cantidad y su origen. La pantalla tiene que
+ *  avisarlo antes de borrar. Un id que no existe da 404. */
+export const borrarComida = (id: string) =>
+  enviar<void>("DELETE", `/comidas/${id}`);
 
 /** Repite una comida ya registrada en otra fecha.
  *

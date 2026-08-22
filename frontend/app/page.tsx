@@ -12,6 +12,7 @@ import {
 import { Cargando, Cifra, ErrorBloque, ultimoDato, usar, type Estado } from "./piezas";
 import { PanelSubjetivo, SIN_REGISTRO, subjetivoDeDia } from "./panel-subjetivo";
 import { PanelConsumos } from "./panel-consumos";
+import { PanelComidas } from "./panel-comidas";
 
 /** Los cuatro tipos de registro. Mismo orden, misma letra y mismo color que en
  *  la rejilla del calendario: si cambiaran de sitio a sitio habría que leer la
@@ -182,7 +183,7 @@ function QueFalta({ dia, recargar, hoy }: {
           Abrir el día en el calendario
         </Link>
         <span className="nota-fina">
-          Lo de hoy se registra aquí mismo · las comidas llegan con el paso 4
+          Lo de hoy se registra aquí mismo · subjetivo, consumos y comidas
         </span>
       </div>
     </div>
@@ -283,6 +284,8 @@ function PanelDeHoy({ dia, hoy, recargar }: {
           puede significar "la API dijo que no hay ninguna". */}
       <PanelConsumos key={`consumos-${hoy}`} fecha={hoy} hoy={hoy}
                      inicial={ultimo?.consumos ?? []} onCambio={recargar} />
+      <PanelComidas key={`comidas-${hoy}`} fecha={hoy} hoy={hoy}
+                    dia={ultimo} onCambio={recargar} />
     </>
   );
 }
