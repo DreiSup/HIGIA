@@ -145,7 +145,13 @@ export function PanelConsumos({ fecha, hoy, inicial, onCambio }: {
       // 🔑 Manda la fila que DEVUELVE la API, no la que se mandó: un trigger
       //    normaliza la sustancia a minúsculas y sin espacios, así que "Café"
       //    se guarda `café`. Pintar lo tecleado sería mentir sobre la base.
-      setLista(ordenar([...tomas, fila]));
+      // 🔴 Y se aplica sobre el estado ANTERIOR, no sobre el `tomas` que se leyó
+      //    al empezar: un atajo y un borrado pueden estar en vuelo a la vez, y
+      //    con la lista capturada en la clausura el segundo en volver pisaría al
+      //    primero — la fila borrada reaparecería, sin un solo error, que es
+      //    justo la desincronización que el resto de la pieza se esfuerza en
+      //    hacer visible.
+      setLista((prev) => ordenar([...(prev ?? inicial), fila]));
       setCampos(CAMPOS_VACIOS);
       setDetalle(false);
       onCambio?.();
@@ -181,7 +187,7 @@ export function PanelConsumos({ fecha, hoy, inicial, onCambio }: {
     setBorrando(c.id);
     try {
       await borrarConsumo(c.id);
-      setLista(tomas.filter((t) => t.id !== c.id));
+      setLista((prev) => (prev ?? inicial).filter((t) => t.id !== c.id));
       onCambio?.();
     } catch (e) {
       // ⚠️ Incluido el 404 de borrar algo que ya no existe, que es el único
