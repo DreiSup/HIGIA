@@ -30,6 +30,10 @@
   --c-subjetivo-texto: oklch(0.16 0.03 300);
   --c-comidas: oklch(0.76 0.13 65);
   --c-consumos: oklch(0.72 0.14 20);
+  /* Igual que `--c-subjetivo-texto`: el texto que va ENCIMA del color,
+     definido con él. Si el rojo cambia de tema y el texto no, el botón
+     se pierde. */
+  --c-consumos-texto: oklch(0.16 0.03 20);
   --c-pulsera: oklch(0.70 0.13 255);
 }
 
@@ -55,6 +59,7 @@
     --c-subjetivo-texto: oklch(0.99 0 0);
     --c-comidas: oklch(0.55 0.14 65);
     --c-consumos: oklch(0.52 0.18 20);
+    --c-consumos-texto: oklch(0.99 0 0);
     --c-pulsera: oklch(0.50 0.17 255);
   }
 }
@@ -77,6 +82,7 @@
   --c-subjetivo-texto: oklch(0.99 0 0);
   --c-comidas: oklch(0.55 0.14 65);
   --c-consumos: oklch(0.52 0.18 20);
+  --c-consumos-texto: oklch(0.99 0 0);
   --c-pulsera: oklch(0.50 0.17 255);
 }
 
@@ -1350,7 +1356,16 @@ button {
 }
 .campo-nota::placeholder { color: var(--texto-3); }
 
-.atajos { display: flex; gap: 8px; flex-wrap: wrap; }
+/* ── Los consumos: una fila por toma ───────────────────────────────────────
+ *
+ * 🔴 La regla espejo de la del panel subjetivo. Allí el gesto es corregir; aquí
+ *    es BORRAR, porque no hay `PUT`. Todo lo de aquí abajo sale de eso: la ✕
+ *    tiene que verse siempre (es el único arreglo) y no puede borrar de un solo
+ *    toque (no hay deshacer). */
+
+.panel-consumos { gap: 13px; }
+
+.atajos { display: flex; gap: 7px; flex-wrap: wrap; }
 .atajo {
   height: 40px;
   padding: 0 14px;
@@ -1360,42 +1375,190 @@ button {
   color: var(--texto);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .atajo:hover { border-color: var(--c-consumos); }
+/* Ocupado: cursor de progreso, no "prohibido". No es que no se pueda: es que
+   está en marcha. */
 .atajo:disabled { opacity: .5; cursor: progress; }
+/* La medida que va a guardar el atajo, dicha en el propio botón. */
 .atajo b { color: var(--texto-3); font-weight: 500; }
+.atajo-otro { border-style: dashed; color: var(--texto-2); background: transparent; }
+
+/* ── «Otro…»: el único camino a una hora concreta ─────────────────────────── */
+
+.detalle-consumo {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--linea);
+  background: var(--fondo-2);
+}
+
+.campos-en-fila { display: flex; gap: 8px; align-items: center; }
+
+.campo {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--linea);
+  border-radius: 11px;
+  background: var(--superficie);
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 0 12px;
+}
+.campo::placeholder { color: var(--texto-3); }
+.campo:disabled { opacity: .6; }
+/* Cantidad y hora en monoespaciada: son números que se leen en columna. */
+.campo-corto {
+  width: 92px;
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Doble clase a propósito: `.boton-guardar` se define más abajo y, a igual
+   especificidad, ganaría el azul. El botón de añadir una toma va en el color de
+   los consumos, no en el del subjetivo. */
+.boton-guardar.boton-consumo {
+  flex: 1;
+  background: var(--c-consumos);
+  color: var(--c-consumos-texto);
+}
+.boton-guardar.boton-consumo:hover { color: var(--c-consumos-texto); }
+
+/* ── La lista ─────────────────────────────────────────────────────────────── */
 
 .lista-consumos {
   display: flex;
   flex-direction: column;
+  /* 1 px de hueco: en claro es lo único que separa una fila de la siguiente. */
   gap: 1px;
   border: 1px solid var(--linea-suave);
   border-radius: 12px;
   overflow: hidden;
 }
+
 .consumo-fila {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 12px;
+  gap: 11px;
+  min-height: 46px;
+  padding: 8px 8px 8px 12px;
   background: var(--fondo-2);
 }
-.consumo-hora {
-  font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--texto);
-  flex: none;
+@media (min-width: 900px) { .consumo-fila { min-height: 44px; } }
+/* Late la fila EN SU SITIO: la altura no cambia, así que las demás no se mueven
+   ni hay salto cuando desaparece. */
+.consumo-fila.en-vuelo { animation: latido 1.1s ease-in-out infinite; }
+.consumo-fila.con-error {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 11px 12px;
+  background: var(--negativo-fondo);
 }
-.consumo-hora.sin-hora { color: var(--texto-3); font-weight: 400; }
+
+.consumo-hora {
+  flex: none;
+  width: 42px;
+  font: 600 12.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--texto);
+}
+/* 🔴 "sin hora" no es un fallo ni un 00:00: es una categoría. Se dice con
+   palabras, en gris fino, y el punto pasa de sólido a hueco. */
+.consumo-hora.sin-hora {
+  /* Cabe en una línea: partido en dos ("sin / hora") sube la fila y rompe la
+     altura constante de la que depende que nada salte al borrar. */
+  width: 58px;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--texto-3);
+}
+
 .consumo-punto {
+  flex: none;
+  display: block;
   width: 6px;
   height: 6px;
   border-radius: 999px;
   background: var(--c-consumos);
-  display: block;
-  flex: none;
 }
-.consumo-texto { flex: 1; min-width: 0; font-size: 13px; color: var(--texto); }
+.consumo-punto.hueco {
+  background: transparent;
+  border: 1px solid var(--c-consumos);
+  opacity: .55;
+}
+
+.consumo-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.consumo-linea { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.consumo-sustancia {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.consumo-medida { font-size: 12px; color: var(--texto-2); white-space: nowrap; }
+.consumo-nota { font-size: 11.5px; line-height: 1.4; color: var(--texto-3); }
+
+.consumo-separador {
+  padding: 7px 12px;
+  background: var(--superficie-2);
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--texto-3);
+}
+
+/* La ✕ no borra: arma. Discreta —no es la acción principal— pero siempre
+   visible y en la misma columna en todas las filas: esconderla detrás de un
+   deslizamiento la haría indescubrible en escritorio. */
+.boton-armar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--texto-3);
+  font-size: 13px;
+}
+.boton-armar:hover { color: var(--negativo); border-color: var(--linea); }
+.boton-armar:disabled { opacity: .5; cursor: progress; }
+
+/* La fila se convierte en su propia confirmación: misma altura, sin diálogo del
+   navegador y sin mover a las de al lado. Y nombra la toma, porque con ocho
+   filas parecidas el riesgo no es borrar sin querer: es borrar la de al lado. */
+.consumo-pregunta {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--texto);
+  text-wrap: pretty;
+}
+.boton-borrar-de-verdad {
+  border-color: transparent;
+  background: var(--negativo);
+  color: oklch(0.99 0 0);
+}
+.boton-borrar-de-verdad:hover { color: oklch(0.99 0 0); filter: brightness(1.08); }
+
+.consumo-reintento { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.boton-error-fino { border-color: var(--negativo); color: var(--negativo); background: transparent; }
+.boton-error-fino:hover { color: var(--negativo); border-color: var(--negativo); }
+
+/* El vacío de la lista es más fino que el de una tarjeta entera: no es que
+   falte la pieza, es que ese día no hay ninguna toma. */
+.vacio-fino { padding: 15px; border-radius: 12px; gap: 5px; }
+.vacio-fino .vacio-texto { font-size: 12px; }
+
 .frecuente {
   display: flex;
   align-items: flex-start;

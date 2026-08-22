@@ -11,6 +11,7 @@ import {
 } from "@/lib/formato";
 import { Cargando, Cifra, ErrorBloque, ultimoDato, usar, type Estado } from "./piezas";
 import { PanelSubjetivo, SIN_REGISTRO, subjetivoDeDia } from "./panel-subjetivo";
+import { PanelConsumos } from "./panel-consumos";
 
 /** Los cuatro tipos de registro. Mismo orden, misma letra y mismo color que en
  *  la rejilla del calendario: si cambiaran de sitio a sitio habría que leer la
@@ -181,8 +182,7 @@ function QueFalta({ dia, recargar, hoy }: {
           Abrir el día en el calendario
         </Link>
         <span className="nota-fina">
-          Lo de hoy se registra aquí mismo · las comidas y los consumos llegan
-          con los pasos 3 y 4
+          Lo de hoy se registra aquí mismo · las comidas llegan con el paso 4
         </span>
       </div>
     </div>
@@ -269,15 +269,21 @@ function PanelDeHoy({ dia, hoy, recargar }: {
   if (!ultimo && dia.error) return null;
 
   return (
-    <PanelSubjetivo
-      key={hoy}
-      fecha={hoy}
-      hoy={hoy}
-      inicial={ultimo ? subjetivoDeDia(ultimo) : SIN_REGISTRO}
-      // Lo que se acaba de escribir manda dentro del panel; esto solo refresca
-      // el contador de "qué te falta de hoy", que es de otro bloque.
-      onGuardado={recargar}
-    />
+    <>
+      <PanelSubjetivo
+        key={hoy}
+        fecha={hoy}
+        hoy={hoy}
+        inicial={ultimo ? subjetivoDeDia(ultimo) : SIN_REGISTRO}
+        // Lo que se acaba de escribir manda dentro del panel; esto solo refresca
+        // el contador de "qué te falta de hoy", que es de otro bloque.
+        onGuardado={recargar}
+      />
+      {/* Debajo del subjetivo y dentro de la misma guarda de carga: `[]` solo
+          puede significar "la API dijo que no hay ninguna". */}
+      <PanelConsumos key={`consumos-${hoy}`} fecha={hoy} hoy={hoy}
+                     inicial={ultimo?.consumos ?? []} onCambio={recargar} />
+    </>
   );
 }
 

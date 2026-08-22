@@ -8,6 +8,7 @@ import {
 } from "@/lib/formato";
 import { Cargando, ErrorBloque, ultimoDato, usar, type Estado } from "../piezas";
 import { PanelSubjetivo, SIN_REGISTRO, subjetivoDeDia } from "../panel-subjetivo";
+import { PanelConsumos } from "../panel-consumos";
 
 /** Los cuatro tipos de registro, en el orden en que se leen en la celda.
  *
@@ -53,7 +54,8 @@ function valorResumen(d: Dia | undefined, bandera: string): string | null {
   }
 
   // Consumos: `/calendario` devuelve la bandera, no el detalle. El desglose por
-  // toma vive en `/consumos?fecha=`, y es del panel del día (paso 3).
+  // toma —una fila por toma, con su hora— lo pinta el panel de consumos, que
+  // lee el día entero.
   return "Registrado";
 }
 
@@ -173,8 +175,9 @@ export default function Calendario() {
         )}
 
         {/* 🔑 Primero lo que se escribe y después lo de solo lectura: el
-            subjetivo es lo único de este panel que se puede registrar, y
-            enterrarlo bajo el resumen lo convertiría en algo que se descubre. */}
+            subjetivo y los consumos son lo que se puede registrar de este día,
+            y enterrarlos bajo el resumen los convertiría en algo que se
+            descubre. */}
         {/* ⚠️ No depende de `dias`: al guardar se recarga el mes, y si el panel
             se desmontara mientras tanto desaparecería justo al confirmar. */}
         {!error && (
@@ -281,16 +284,24 @@ function PanelDelDia({ dia, fecha, hoy, recargar }: {
   }
 
   return (
-    <PanelSubjetivo
-      // Cambiar de día tiene que tirar lo que se estuviera marcando sin
-      // guardar: si no, un 7 elegido para el 12 se guardaría en el 13.
-      key={fecha}
-      fecha={fecha}
-      hoy={hoy}
-      inicial={suyo ? subjetivoDeDia(suyo) : SIN_REGISTRO}
-      // Refresca el día y el mes: la señal S de la celda se enciende sola.
-      onGuardado={recargar}
-    />
+    <>
+      <PanelSubjetivo
+        // Cambiar de día tiene que tirar lo que se estuviera marcando sin
+        // guardar: si no, un 7 elegido para el 12 se guardaría en el 13.
+        key={fecha}
+        fecha={fecha}
+        hoy={hoy}
+        inicial={suyo ? subjetivoDeDia(suyo) : SIN_REGISTRO}
+        // Refresca el día y el mes: la señal S de la celda se enciende sola.
+        onGuardado={recargar}
+      />
+      {/* 🔑 Los consumos van DENTRO de este componente, no al lado: aquí es
+          donde está la guarda de carga. Como hermano, `suyo?.consumos ?? []`
+          pintaría "ninguna toma" mientras se lee el día — una afirmación
+          sobre los datos hecha antes de tener los datos. */}
+      <PanelConsumos key={`consumos-${fecha}`} fecha={fecha} hoy={hoy}
+                     inicial={suyo?.consumos ?? []} onCambio={recargar} />
+    </>
   );
 }
 
@@ -300,7 +311,7 @@ function Resumen({ dia, fecha, hoy }: {
   const titulo = fechaLarga(fecha);
 
   let nota = tieneAlgo(dia)
-    ? "Lo que hay registrado · comidas y consumos, solo lectura"
+    ? "Lo que hay registrado · las comidas, solo lectura"
     : "Día sin registros";
   if (fecha === hoy) nota = "Hoy · " + nota.toLowerCase();
   else if (fecha > hoy) nota = "Día futuro";
