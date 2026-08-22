@@ -61,6 +61,13 @@ export function fechaLarga(fecha: string): string {
   return `${nombre[0].toUpperCase()}${nombre.slice(1)}, ${d} de ${MESES[m - 1]}`;
 }
 
+/** "12 de agosto". El día nombrado sin el día de la semana: es lo que lee el
+ *  botón de guardar justo antes de pulsarlo. */
+export function diaYMes(fecha: string): string {
+  const [, m, d] = fecha.split("-").map(Number);
+  return `${d} de ${MESES[m - 1]}`;
+}
+
 /** "12 ago". */
 export function fechaCorta(fecha: string): string {
   const [, m, d] = fecha.split("-").map(Number);

@@ -56,6 +56,19 @@ export function usar<T>(
   return [estado, recargar];
 }
 
+/** El último dato que llegó de verdad, aunque ahora se esté recargando.
+ *
+ * 🔑 `usar()` vacía el dato al recargar, que es lo correcto para un bloque de
+ *    lectura: mientras no se sepa, no se afirma. Pero el panel de escritura no
+ *    puede desaparecer justo después de guardar —perdería lo escrito de vista y
+ *    la pantalla saltaría—, así que ahí se pinta lo último conocido mientras
+ *    llega la confirmación. Solo para eso. */
+export function ultimoDato<T>(estado: Estado<T>): T | null {
+  const guardado = useRef<T | null>(null);
+  if (estado.dato != null) guardado.current = estado.dato;
+  return guardado.current;
+}
+
 /** Fallo de UN bloque. Dice la ruta exacta y el error literal.
  *
  * 🔴 "No se pudo leer" y "no hay nada registrado" tienen que verse distinto.

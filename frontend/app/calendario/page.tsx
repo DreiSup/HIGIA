@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { API, traerMes, type Dia } from "@/lib/api";
+import { API, traerDia, traerMes, type Dia, type DiaCompleto } from "@/lib/api";
 import {
   DIAS_CORTOS, MESES, diaDeLaSemana, diasDelMes, fechaISO, fechaLarga, horas,
   hoyLocal, mesEnMayuscula, num,
 } from "@/lib/formato";
+import { Cargando, ErrorBloque, ultimoDato, usar, type Estado } from "../piezas";
+import { PanelSubjetivo, SIN_REGISTRO, subjetivoDeDia } from "../panel-subjetivo";
 
 /** Los cuatro tipos de registro, en el orden en que se leen en la celda.
  *
@@ -62,6 +64,11 @@ export default function Calendario() {
   const [dias, setDias] = useState<Dia[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [seleccion, setSeleccion] = useState(hoy);
+
+  // El día seleccionado se lee entero: la rejilla trae banderas y los tres
+  // números, pero no la nota ni `subjetivo_registrado_en`, que es lo que dice
+  // si un registro es de ese día o es un recuerdo de hace nueve.
+  const [dia, recargarDia] = usar(() => traerDia(seleccion), [seleccion]);
 
   const cargar = useCallback(() => {
     setError(null);
@@ -165,6 +172,16 @@ export default function Calendario() {
           </div>
         )}
 
+        {/* 🔑 Primero lo que se escribe y después lo de solo lectura: el
+            subjetivo es lo único de este panel que se puede registrar, y
+            enterrarlo bajo el resumen lo convertiría en algo que se descubre. */}
+        {/* ⚠️ No depende de `dias`: al guardar se recarga el mes, y si el panel
+            se desmontara mientras tanto desaparecería justo al confirmar. */}
+        {!error && (
+          <PanelDelDia dia={dia} fecha={seleccion} hoy={hoy}
+                       recargar={() => { recargarDia(); cargar(); }} />
+        )}
+
         {dias && !error && (
           <Resumen dia={porFecha.get(seleccion)} fecha={seleccion} hoy={hoy} />
         )}
@@ -248,13 +265,42 @@ function Celdas({ anio, mes, hoy, porFecha, cargando, seleccion, elegir }: {
   return <>{celdas}</>;
 }
 
+function PanelDelDia({ dia, fecha, hoy, recargar }: {
+  dia: Estado<DiaCompleto>; fecha: string; hoy: string; recargar: () => void;
+}) {
+  const ultimo = ultimoDato(dia);
+  // 🔴 Lo último conocido solo vale si es de ESTE día: si no, al cambiar de día
+  //    el panel pintaría los números del anterior bajo la fecha nueva, que es
+  //    la forma más fácil de guardar un número en el día equivocado.
+  const suyo = ultimo?.fecha === fecha ? ultimo : null;
+
+  if (!suyo && dia.cargando) return <Cargando alto={430} />;
+  if (!suyo && dia.error) {
+    return <ErrorBloque que={`el día ${fecha}`} ruta={`GET /dia/${fecha}`}
+                        error={dia.error} recargar={recargar} />;
+  }
+
+  return (
+    <PanelSubjetivo
+      // Cambiar de día tiene que tirar lo que se estuviera marcando sin
+      // guardar: si no, un 7 elegido para el 12 se guardaría en el 13.
+      key={fecha}
+      fecha={fecha}
+      hoy={hoy}
+      inicial={suyo ? subjetivoDeDia(suyo) : SIN_REGISTRO}
+      // Refresca el día y el mes: la señal S de la celda se enciende sola.
+      onGuardado={recargar}
+    />
+  );
+}
+
 function Resumen({ dia, fecha, hoy }: {
   dia: Dia | undefined; fecha: string; hoy: string;
 }) {
   const titulo = fechaLarga(fecha);
 
   let nota = tieneAlgo(dia)
-    ? "Solo lectura · el panel del día es el paso 2"
+    ? "Lo que hay registrado · comidas y consumos, solo lectura"
     : "Día sin registros";
   if (fecha === hoy) nota = "Hoy · " + nota.toLowerCase();
   else if (fecha > hoy) nota = "Día futuro";

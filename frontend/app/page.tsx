@@ -9,7 +9,8 @@ import {
   DIAS_CORTOS, HUECO, denominador, duracion, fechaCorta, fechaLarga, hoyLocal,
   num, plural, sumarDias,
 } from "@/lib/formato";
-import { Cargando, Cifra, ErrorBloque, usar, type Estado } from "./piezas";
+import { Cargando, Cifra, ErrorBloque, ultimoDato, usar, type Estado } from "./piezas";
+import { PanelSubjetivo, SIN_REGISTRO, subjetivoDeDia } from "./panel-subjetivo";
 
 /** Los cuatro tipos de registro. Mismo orden, misma letra y mismo color que en
  *  la rejilla del calendario: si cambiaran de sitio a sitio habría que leer la
@@ -62,10 +63,17 @@ export default function Hoy() {
 
         <QueFalta dia={dia} recargar={recargarDia} hoy={hoy} />
 
-        <div className="par">
-          <UltimaNoche noches={noches} hoy={hoy} recargar={recargarNoches} />
-          <ComoEstoy dia={dia} />
-        </div>
+        {/* 🔑 El panel SUSTITUYE a la tarjeta de solo lectura "Cómo estás hoy".
+            No convive con ella: los tres números pintados dos veces en la misma
+            pantalla, unos tocables y otros no, es una copia peor de la que sí
+            se puede tocar. El panel ya es la lectura cuando hay registro.
+
+            Va a lo ancho de la columna, no dentro de `.par`: a media columna
+            las once casillas bajan de 30 px y se pierde el único gesto que
+            tiene esta pantalla. */}
+        <UltimaNoche noches={noches} hoy={hoy} recargar={recargarNoches} />
+
+        <PanelDeHoy dia={dia} hoy={hoy} recargar={recargarDia} />
 
         <LaSemana semana={semana} dias={dias} lunes={lunes} domingo={domingo}
                   recargar={() => { recargarSemana(); recargarDias(); }} />
@@ -154,7 +162,9 @@ function QueFalta({ dia, recargar, hoy }: {
             <div key={t.letra}
                  className={"senal-caja" + (info.hay ? " presente" : "")}>
               <div className="senal-caja-cabecera">
-                <span className={"senal-letra " + t.clase}>{t.letra}</span>
+                <span className={"senal-letra " + t.clase}>
+                  <span>{t.letra}</span>
+                </span>
                 <span className="senal-nombre">{t.nombre}</span>
               </div>
               <div className="senal-estado">{info.estado}</div>
@@ -164,15 +174,15 @@ function QueFalta({ dia, recargar, hoy }: {
         })}
       </div>
 
-      {/* 🔴 El botón NO dice "registrar": todavía no se puede. El calendario es
-          de solo lectura hasta el paso 2, y un botón que promete escribir es la
-          clase de mentira que este proyecto no se puede permitir. */}
+      {/* El subjetivo de hoy se escribe aquí abajo, en esta misma pantalla. El
+          calendario sirve para otra cosa: los días de atrás. */}
       <div className="fila-accion">
         <Link className="boton-accion" href="/calendario">
           Abrir el día en el calendario
         </Link>
         <span className="nota-fina">
-          Escribir llega con el panel del día · paso 2
+          Lo de hoy se registra aquí mismo · las comidas y los consumos llegan
+          con los pasos 3 y 4
         </span>
       </div>
     </div>
@@ -244,56 +254,30 @@ function UltimaNoche({ noches, hoy, recargar }: {
 
 const duracionONada = (m: number | null) => (m == null ? null : duracion(m));
 
-// ── Bloque 3 · Cómo estoy hoy ─────────────────────────────────────────────────
+// ── Bloque 3 · Cómo me ha ido hoy (y la única escritura de la app) ───────────
 
-function ComoEstoy({ dia }: { dia: Estado<DiaCompleto> }) {
-  if (dia.cargando) return <Cargando alto={220} />;
+function PanelDeHoy({ dia, hoy, recargar }: {
+  dia: Estado<DiaCompleto>; hoy: string; recargar: () => void;
+}) {
+  // 🔑 Mientras se recarga el día se sigue pintando el último conocido: sin
+  //    esto, refrescar el contador de arriba después de guardar haría
+  //    desaparecer el panel justo cuando acaba de confirmar lo escrito.
+  const ultimo = ultimoDato(dia);
+  if (!ultimo && dia.cargando) return <Cargando alto={430} />;
   // El error ya lo cuenta el bloque de arriba, que usa la misma petición: no
   // hace falta repetir la tarjeta de error dos veces.
-  if (dia.error) return null;
-  const d = dia.dato!;
-
-  const escalas = [
-    { nombre: "Cómo me siento", valor: d.como_me_siento },
-    { nombre: "Ánimo", valor: d.animo },
-    { nombre: "Energía", valor: d.energia },
-  ];
-  const vacio = escalas.every((e) => e.valor == null);
+  if (!ultimo && dia.error) return null;
 
   return (
-    <div className="tarjeta">
-      <div className="rotulo">
-        <span className="rotulo-punto" style={{ background: "var(--c-subjetivo)" }} />
-        Cómo estás hoy
-      </div>
-
-      <div className="pila">
-        {escalas.map((e) => (
-          <div key={e.nombre} className="escala-lectura">
-            <div className="escala-cabecera">
-              <span>{e.nombre}</span>
-              <span className={"escala-valor" + (e.valor == null ? " hueca" : "")}>
-                {e.valor == null ? "sin registrar" : `${e.valor} / 10`}
-              </span>
-            </div>
-            <div className={"escala-barra" + (e.valor == null ? " hueca" : "")}>
-              {e.valor != null && (
-                <div className="escala-relleno" style={{ width: `${e.valor * 10}%` }} />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {vacio && (
-        <span className="nota-fina">
-          Sin registrar. Un carril vacío no es un 0: el 0 es una respuesta y esto
-          es la ausencia de respuesta.
-        </span>
-      )}
-
-      {d.nota_dia && <div className="aviso">{d.nota_dia}</div>}
-    </div>
+    <PanelSubjetivo
+      key={hoy}
+      fecha={hoy}
+      hoy={hoy}
+      inicial={ultimo ? subjetivoDeDia(ultimo) : SIN_REGISTRO}
+      // Lo que se acaba de escribir manda dentro del panel; esto solo refresca
+      // el contador de "qué te falta de hoy", que es de otro bloque.
+      onGuardado={recargar}
+    />
   );
 }
 

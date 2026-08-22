@@ -25,6 +25,9 @@
      caja del resumen: si el color cambiara de sitio a sitio habría que leer la
      leyenda cada vez. */
   --c-subjetivo: oklch(0.72 0.13 300);
+  /* El dígito DENTRO de la casilla elegida. Va con el color, no aparte: si el
+     morado cambia de tema y el texto no, el número se pierde. */
+  --c-subjetivo-texto: oklch(0.16 0.03 300);
   --c-comidas: oklch(0.76 0.13 65);
   --c-consumos: oklch(0.72 0.14 20);
   --c-pulsera: oklch(0.70 0.13 255);
@@ -49,6 +52,7 @@
     --negativo: oklch(0.52 0.21 25);
     --negativo-fondo: oklch(0.955 0.03 25);
     --c-subjetivo: oklch(0.48 0.17 300);
+    --c-subjetivo-texto: oklch(0.99 0 0);
     --c-comidas: oklch(0.55 0.14 65);
     --c-consumos: oklch(0.52 0.18 20);
     --c-pulsera: oklch(0.50 0.17 255);
@@ -70,6 +74,7 @@
   --negativo: oklch(0.52 0.21 25);
   --negativo-fondo: oklch(0.955 0.03 25);
   --c-subjetivo: oklch(0.48 0.17 300);
+  --c-subjetivo-texto: oklch(0.99 0 0);
   --c-comidas: oklch(0.55 0.14 65);
   --c-consumos: oklch(0.52 0.18 20);
   --c-pulsera: oklch(0.50 0.17 255);
@@ -774,10 +779,12 @@ button {
   font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   border: 1px solid currentColor;
 }
-.senal-caja.presente .senal-letra {
-  color: var(--fondo);
-  background: currentColor;
-}
+/* 🔑 El cuadrado se pinta con el color del tipo (`currentColor`) y la letra va
+   dentro, en un `span`, con el color del fondo. Si el color se pusiera en el
+   mismo elemento, `currentColor` valdría eso y la letra se volvería invisible
+   sobre su propio cuadrado — que es justo lo que pasaba: no se veía porque
+   nunca hubo un registro que lo encendiera. */
+.senal-caja.presente .senal-letra { background: currentColor; }
 .senal-caja.presente .senal-letra span { color: var(--fondo); }
 
 .senal-nombre { font-size: 12.5px; font-weight: 600; color: var(--texto-2); }
@@ -808,8 +815,9 @@ button {
 
 .fila-accion { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 
-/* Barra de una escala 0-10 en modo lectura. */
-.escala-lectura { display: flex; flex-direction: column; gap: 7px; }
+/* Cabecera de un carril 0-10: el nombre a la izquierda y su lectura a la
+   derecha. La barra de solo lectura que había aquí desapareció con la tarjeta
+   "Cómo estás hoy": ahora esa lectura la da el propio panel. */
 .escala-cabecera {
   display: flex;
   align-items: baseline;
@@ -818,25 +826,17 @@ button {
   font-size: 13px;
   color: var(--texto-2);
 }
-.escala-valor { font-size: 14px; font-weight: 600; color: var(--texto); }
-.escala-valor.hueca { font-size: 12px; font-weight: 400; color: var(--texto-3); }
-
-.escala-barra {
-  height: 10px;
-  border-radius: 999px;
-  background: var(--linea-suave);
-  overflow: hidden;
+/* El nombre y el número, que confirman el valor antes de guardar. */
+.escala-nombre { font-size: 13.5px; font-weight: 600; color: var(--texto); }
+.escala-nombre.hueca { color: var(--texto-2); }
+.escala-valor {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--texto);
 }
-/* Sin valor no hay barra a 0: hay un carril discontinuo vacío. */
-.escala-barra.hueca {
-  background: transparent;
-  border: 1px dashed var(--linea);
-}
-.escala-relleno {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--c-subjetivo);
-}
+/* Sin registrar el número no se hace grande: es un "—" y un "sin registrar". */
+.escala-valor.hueca { font-size: 17px; color: var(--texto-3); }
 
 /* Las siete noches de la semana. */
 .barras-semana {
@@ -1257,29 +1257,83 @@ button {
   padding: 16px 20px 22px;
 }
 
-/* Las once casillas del 0 al 10. */
-.escala-puntos { display: flex; gap: 4px; }
+/* ── El carril: once casillas del 0 al 10 ──────────────────────────────────
+ *
+ * 🔑 Vacío y lleno se distinguen por LA CAJA, no por el contenido: sin
+ *    registrar el carril no tiene fondo y su borde es discontinuo. Así se ve de
+ *    lejos y sin contar casillas, que es lo que pide la regla 2.
+ *
+ * El carril entero acepta arrastre (`touch-action: none`): se apoya el pulgar y
+ * se desliza hasta el número, que es como se puntúa uno a las once de la noche. */
+.escala-puntos {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--linea);
+  background: var(--fondo-2);
+  touch-action: none;
+}
+.escala-puntos.sin-marcar { border-style: dashed; background: transparent; }
+/* Guardando: ni se toca ni parece que se pueda tocar, y la altura no cambia. */
+.escala-puntos.bloqueado { opacity: .6; pointer-events: none; }
 
 .punto-escala {
   flex: 1;
   min-width: 0;
-  height: 42px;
-  border-radius: 10px;
+  /* 52 px en móvil: 30 × 52 no llega a los 44 de ancho, pero el objetivo real
+     es la banda entera y un fallo cuesta un toque en la casilla de al lado. */
+  height: 52px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
   font-size: 12.5px;
   font-weight: 600;
-  border: 1px solid var(--linea-suave);
-  background: var(--fondo-2);
   color: var(--texto-3);
-  transition: background .12s, border-color .12s, color .12s;
+  touch-action: none;
+  transition: background .1s, color .1s;
 }
-.punto-escala:hover { border-color: var(--linea); color: var(--texto); }
+@media (min-width: 900px) { .punto-escala { height: 44px; } }
+.punto-escala:hover { background: var(--superficie-2); color: var(--texto); }
 /* 🔑 Sin registrar NO hay ninguna casilla marcada, que es distinto de tener
-   marcada la del 0. El 0 es una respuesta; el hueco no lo es. */
-.punto-escala.elegido {
-  border-color: transparent;
+   marcada la del 0. El 0 es una respuesta; el hueco no lo es.
+   🔴 Y ninguna casilla es el camino fácil: las once son idénticas hasta que se
+      elige una. Sin preselección, sin punto medio marcado, sin degradado y sin
+      etiquetas en los extremos — el sesgo al 7 no encuentra ayuda visual. */
+.punto-escala.elegido,
+.punto-escala.elegido:hover {
   background: var(--c-subjetivo);
-  color: oklch(0.15 0.01 300);
+  color: var(--c-subjetivo-texto);
 }
+
+/* ── El panel del día, en Hoy y en el calendario ───────────────────────────── */
+
+.panel-subjetivo-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.carril-subjetivo { display: flex; flex-direction: column; gap: 7px; }
+
+.nota-cerrada { text-align: left; padding: 0 14px; }
+
+/* El fallo va pegado al botón, no arriba: es la consecuencia de haber pulsado. */
+.fallo-guardar {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--negativo);
+  background: var(--negativo-fondo);
+}
+.fallo-guardar .mono-error { line-height: 1.6; word-break: break-all; }
+
+.boton-guardar.fallo { background: var(--negativo); }
+/* Late el BOTÓN, no el bloque: así la altura no cambia y nada salta de sitio. */
+.boton-guardar.latiendo { animation: latido 1.1s ease-in-out infinite; }
 
 .campo-nota {
   min-height: 56px;
@@ -1342,18 +1396,6 @@ button {
   flex: none;
 }
 .consumo-texto { flex: 1; min-width: 0; font-size: 13px; color: var(--texto); }
-.boton-borrar {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  border-radius: 9px;
-  border-color: transparent;
-  background: transparent;
-  font-size: 13px;
-  color: var(--texto-3);
-}
-.boton-borrar:hover { color: var(--negativo); border-color: var(--linea); }
-
 .frecuente {
   display: flex;
   align-items: flex-start;
